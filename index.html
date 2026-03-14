@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GFSD-9000 v2 | Galactic Fart Signal Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g:#00ff88; --gd:#00cc66; --gf:rgba(0,255,136,0.12);
+  --a:#ffb400; --ad:#cc8800;
+  --r:#ff3344; --rd:#cc2233;
+  --b:#00c8ff; --bd:#0099cc;
+  --p:#cc44ff;
+  --bg:#010c03; --panel:#020f05; --panel2:#031208;
+  --border:rgba(0,255,136,0.2); --border2:rgba(0,255,136,0.08);
+  --font-mono:'Share Tech Mono',monospace;
+  --font-disp:'Orbitron',monospace;
+  --font-body:'Exo 2',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--g);font-family:var(--font-mono);cursor:crosshair;user-select:none}
+
+/* CRT */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.1) 3px,rgba(0,0,0,0.1) 4px);pointer-events:none;z-index:9999;animation:flicker 12s ease-in-out infinite}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 55%,rgba(0,0,0,0.7) 100%);pointer-events:none;z-index:9998}
+@keyframes flicker{0%,100%{opacity:1}91%{opacity:1}92%{opacity:.88}93%{opacity:1}97%{opacity:.94}98%{opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
+@keyframes sweep-glow{0%{opacity:.7}100%{opacity:.2}}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fade-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bar-fill{from{width:0}to{width:var(--w)}}
+@keyframes ping{0%{transform:scale(1);opacity:1}100%{transform:scale(3);opacity:0}}
+@keyframes rotate360{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes waveform{0%,100%{transform:scaleY(1)}50%{transform:scaleY(var(--peak,0.3))}}
+@keyframes log-in{from{background:rgba(0,255,136,.18);transform:translateX(8px)}to{background:transparent;transform:translateX(0)}}
+@keyframes alert-drop{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
+/* NAV */
+.nav{display:flex;align-items:stretch;background:rgba(1,12,3,.95);border-bottom:1px solid var(--border);position:fixed;top:0;left:0;right:0;z-index:500;height:46px;backdrop-filter:blur(8px)}
+.nav-logo{font-family:var(--font-disp);font-size:12px;font-weight:900;letter-spacing:5px;padding:0 20px;display:flex;align-items:center;border-right:1px solid var(--border);white-space:nowrap;text-shadow:0 0 20px rgba(0,255,136,.5);color:var(--g)}
+.nav-logo em{color:var(--a);font-style:normal}
+.nav-tabs{display:flex;flex:1}
+.nav-tab{font-family:var(--font-disp);font-size:9px;letter-spacing:3px;padding:0 18px;border:none;background:transparent;color:rgba(0,255,136,.5);cursor:pointer;border-right:1px solid var(--border2);transition:all .2s;display:flex;align-items:center;gap:7px;position:relative}
+.nav-tab:hover{color:var(--g);background:var(--gf)}
+.nav-tab.active{color:var(--g);background:rgba(0,255,136,.07)}
+.nav-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--g);box-shadow:0 0 8px var(--g)}
+.nav-tab .tab-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.nav-right{display:flex;align-items:center;gap:12px;padding:0 16px;border-left:1px solid var(--border);font-size:10px;letter-spacing:1px}
+.sys-status{display:flex;align-items:center;gap:6px}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g);animation:pulse-dot 1.8s ease-in-out infinite}
+.sdot.warn{background:var(--a);box-shadow:0 0 8px var(--a)}
+.sdot.crit{background:var(--r);box-shadow:0 0 8px var(--r);animation:pulse-dot .5s ease-in-out infinite}
+#clock{font-family:var(--font-disp);font-size:10px;color:var(--b);letter-spacing:2px}
+
+/* PAGES */
+.page{position:fixed;inset:46px 0 28px 0;display:none;overflow:hidden}
+.page.active{display:flex}
+
+/* ====== MAIN PAGE ====== */
+#page-main{flex-direction:column}
+.main-layout{display:grid;grid-template-columns:1fr 320px;flex:1;overflow:hidden}
+.radar-col{display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.sidebar-col{display:flex;flex-direction:column;overflow:hidden}
+
+/* Radar */
+.radar-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 50%,rgba(0,30,10,.8) 0%,var(--bg) 80%);position:relative;overflow:hidden;min-height:0}
+#radar-canvas{display:block;cursor:crosshair}
+.radar-crosshair-info{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(1,12,3,.85);border:1px solid var(--border);padding:4px 16px;font-size:10px;letter-spacing:2px;display:flex;gap:20px;white-space:nowrap}
+.radar-crosshair-info span{color:var(--gd)}
+.radar-crosshair-info b{color:var(--g)}
+
+.radar-footer{border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr)}
+.rf-cell{padding:7px 12px;border-right:1px solid var(--border2)}
+.rf-cell:last-child{border:none}
+.rf-cell .lbl{font-size:8px;letter-spacing:2px;color:var(--gd);margin-bottom:3px}
+.rf-cell .val{font-family:var(--font-disp);font-size:15px;color:var(--g)}
+.rf-cell .val.warn{color:var(--a);text-shadow:0 0 10px rgba(255,180,0,.4)}
+.rf-cell .val.crit{color:var(--r);text-shadow:0 0 10px rgba(255,51,68,.4)}
+
+/* Sidebar panels */
+.s-panel{border-bottom:1px solid var(--border);overflow:hidden}
+.s-panel-hd{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:rgba(0,255,136,.04);border-bottom:1px solid var(--border2);font-size:8px;letter-spacing:2.5px;color:var(--gd)}
+.s-panel-hd em{color:var(--g);font-style:normal}
+
+/* Controls */
+.ctrl-grid{padding:8px;display:flex;flex-direction:column;gap:6px}
+.ctrl-row{display:flex;align-items:center;gap:8px;font-size:10px}
+.ctrl-row label{width:90px;color:var(--gd);letter-spacing:1px;flex-shrink:0;font-size:9px}
+input[type=range]{-webkit-appearance:none;flex:1;height:2px;background:rgba(0,255,136,.2);outline:none;border-radius:1px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g);cursor:pointer}
+select{background:var(--bg);color:var(--g);border:1px solid var(--border);font-family:var(--font-mono);font-size:9px;padding:2px 5px;outline:none;cursor:pointer;flex:1}
+.ctrl-val{width:24px;text-align:right;font-size:10px;color:var(--g)}
+.btn-row{display:flex;gap:6px;padding:0 8px 8px}
+.btn{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;background:transparent;border:1px solid var(--gd);color:var(--g);padding:4px 8px;cursor:pointer;transition:all .15s;flex:1}
+.btn:hover{background:var(--gf);box-shadow:0 0 8px rgba(0,255,136,.2)}
+.btn:active{transform:scale(.96)}
+.btn.danger{border-color:rgba(255,51,68,.4);color:var(--r)}
+.btn.danger:hover{background:rgba(255,51,68,.08)}
+.btn.active-btn{background:rgba(0,255,136,.15);border-color:var(--g);box-shadow:0 0 8px rgba(0,255,136,.3)}
+
+/* Composition bars */
+.comp-bars{padding:6px 10px 8px}
+.bar-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:9px}
+.bar-lbl{width:70px;color:var(--gd);letter-spacing:1px;flex-shrink:0}
+.bar-track{flex:1;height:3px;background:rgba(0,255,136,.08);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bar-fill.methane{background:var(--a);box-shadow:0 0 6px rgba(255,180,0,.5)}
+.bar-fill.sulfur{background:#ff7700;box-shadow:0 0 6px rgba(255,120,0,.5)}
+.bar-fill.sonic{background:var(--b);box-shadow:0 0 6px rgba(0,200,255,.5)}
+.bar-fill.bio{background:#88ff00;box-shadow:0 0 6px rgba(136,255,0,.5)}
+.bar-fill.quantum{background:var(--p);box-shadow:0 0 6px rgba(204,68,255,.5)}
+.bar-val{width:28px;text-align:right;font-size:9px}
+
+/* Waveform/Sonogram */
+.waveform-wrap{padding:6px 8px}
+#waveform-canvas{width:100%;height:60px;display:block;border:1px solid var(--border2);border-radius:2px}
+.wave-controls{display:flex;gap:6px;padding:4px 8px 8px;align-items:center}
+.wave-lbl{font-size:9px;color:var(--gd);letter-spacing:1px}
+
+/* Signal Log */
+.log-scroll{overflow-y:auto;max-height:180px;padding:4px}
+.log-scroll::-webkit-scrollbar{width:3px}
+.log-scroll::-webkit-scrollbar-thumb{background:var(--border)}
+.log-entry{font-size:9px;line-height:1.6;padding:2px 4px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:60px 1fr auto;gap:4px;animation:log-in .3s ease}
+.log-entry .t{color:rgba(0,255,136,.4)}
+.log-entry .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-entry.crit .s{color:var(--r)}
+.log-entry.warn .s{color:var(--a)}
+.log-entry.clear .s{color:var(--g)}
+.log-entry .db{color:var(--gd);white-space:nowrap}
+
+/* Real data banner */
+#live-data-bar{padding:4px 10px;background:rgba(0,200,255,.06);border-bottom:1px solid rgba(0,200,255,.2);font-size:8px;letter-spacing:2px;color:var(--b);display:flex;align-items:center;gap:8px;flex-shrink:0}
+#live-data-bar .ld-dot{width:5px;height:5px;border-radius:50%;background:var(--b);animation:pulse-dot 1.2s ease infinite}
+
+/* ALERT */
+#alert-banner{position:fixed;top:46px;left:0;right:0;transform:translateY(-110%);transition:transform .3s ease;z-index:600;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;font-family:var(--font-disp);font-size:11px;letter-spacing:3px}
+#alert-banner.show{transform:translateY(0);animation:alert-drop .3s ease}
+#alert-banner.crit{background:rgba(255,30,50,.9);color:#fff;border-bottom:1px solid var(--r)}
+#alert-banner.warn{background:rgba(255,160,0,.9);color:#000;border-bottom:1px solid var(--a)}
+
+/* ====== SONIFICATION PAGE ====== */
+#page-sono{flex-direction:column;padding:0}
+.sono-layout{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;gap:0}
+.sono-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sono-panel:last-child{border-right:none}
+.sono-hd{padding:10px 16px;border-bottom:1px solid var(--border);font-family:var(--font-disp);font-size:9px;letter-spacing:3px;color:var(--gd);background:rgba(0,255,136,.03);flex-shrink:0}
+.sono-hd b{color:var(--g)}
+.sono-body{flex:1;padding:14px;overflow-y:auto;min-height:0}
+.sono-body::-webkit-scrollbar{width:3px}
+.sono-body::-webkit-scrollbar-thumb{background:var(--border)}
+
+#spectrogram-canvas{width:100%;height:200px;display:block;border:1px solid var(--border2);margin-bottom:12px}
+#oscilloscope-canvas{width:100%;height:120px;display:block;border:1px solid var(--border2);margin-bottom:12px}
+.freq-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.freq-card{background:rgba(0,255,136,.04);border:1px solid var(--border2);padding:8px 10px;font-size:9px}
+.freq-card .fc-val{font-family:var(--font-disp);font-size:18px;color:var(--g);margin-bottom:2px}
+.freq-card .fc-lbl{color:var(--gd);letter-spacing:1px}
+.freq-card .fc-sub{color:rgba(0,255,136,.4);font-size:8px;margin-top:2px}
+
+.synth-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.synth-btn{background:rgba(0,255,136,.05);border:1px solid var(--border);color:var(--gd);font-family:var(--font-mono);font-size:8px;letter-spacing:1.5px;padding:8px 4px;cursor:pointer;transition:all .2s;text-align:center}
+.synth-btn:hover{background:rgba(0,255,136,.12);color:var(--g);border-color:var(--g)}
+.synth-btn.playing{background:rgba(0,255,136,.15);color:var(--g);border-color:var(--g);box-shadow:0 0 12px rgba(0,255,136,.2)}
+
+.mapping-table{width:100%;font-size:9px;border-collapse:collapse}
+.mapping-table th{color:var(--gd);letter-spacing:1px;padding:4px 8px;border-bottom:1px solid var(--border2);text-align:left;font-weight:normal}
+.mapping-table td{padding:3px 8px;border-bottom:1px solid var(--border2);color:var(--g)}
+.mapping-table td:first-child{color:var(--gd)}
+
+#piano-roll{height:80px;border:1px solid var(--border2);overflow:hidden;position:relative;margin-bottom:12px}
+.piano-note{position:absolute;bottom:0;width:3px;border-radius:1px 1px 0 0;transition:height .15s ease}
+
+/* ====== SATELLITE PAGE ====== */
+#page-sat{flex-direction:column}
+.sat-layout{display:grid;grid-template-columns:1fr 1fr 1fr;flex:1;overflow:hidden}
+.sat-col{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sat-col:last-child{border-right:none}
+.sat-hd{padding:8px 14px;border-bottom:1px solid var(--border);font-family:var(--font-disp);font-size:8px;letter-spacing:3px;background:rgba(0,255,136,.03);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sat-hd span{color:var(--gd)}
+.sat-hd em{color:var(--g);font-style:normal;font-size:9px}
+.sat-body{flex:1;overflow-y:auto;padding:10px}
+.sat-body::-webkit-scrollbar{width:3px}
+.sat-body::-webkit-scrollbar-thumb{background:var(--border)}
+
+.data-card{background:rgba(0,255,136,.04);border:1px solid var(--border2);padding:10px;margin-bottom:8px;font-size:9px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .2s}
+.data-card:hover{border-color:var(--gd)}
+.data-card .dc-badge{position:absolute;top:6px;right:6px;font-size:7px;letter-spacing:1.5px;padding:2px 6px;border-radius:0}
+.data-card .dc-badge.live{background:rgba(255,51,68,.15);color:var(--r);border:1px solid rgba(255,51,68,.3)}
+.data-card .dc-badge.sim{background:rgba(0,200,255,.1);color:var(--b);border:1px solid rgba(0,200,255,.25)}
+.data-card .dc-badge.api{background:rgba(0,255,136,.1);color:var(--g);border:1px solid var(--border)}
+.data-card .dc-title{font-family:var(--font-disp);font-size:10px;color:var(--g);margin-bottom:4px}
+.data-card .dc-val{font-family:var(--font-disp);font-size:20px;color:var(--g);margin-bottom:2px}
+.data-card .dc-val.warn{color:var(--a)}
+.data-card .dc-val.crit{color:var(--r)}
+.data-card .dc-desc{color:rgba(0,255,136,.5);line-height:1.5}
+.data-card .dc-meta{color:rgba(0,255,136,.3);font-size:8px;margin-top:4px}
+
+.sat-connect-status{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border2);font-size:9px;letter-spacing:1px;background:rgba(0,0,0,.3);flex-shrink:0}
+.conn-indicator{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.conn-indicator.connected{background:var(--g);box-shadow:0 0 8px var(--g);animation:pulse-dot 1.5s ease infinite}
+.conn-indicator.simulated{background:var(--b);box-shadow:0 0 8px var(--b);animation:pulse-dot 2s ease infinite}
+.conn-indicator.offline{background:rgba(0,255,136,.2)}
+
+.neutrino-gauge{margin:8px 0;background:rgba(0,0,0,.4);border:1px solid var(--border2);padding:10px}
+.ng-title{font-family:var(--font-disp);font-size:8px;letter-spacing:2px;color:var(--gd);margin-bottom:8px}
+.ng-arc-wrap{position:relative;height:80px;display:flex;align-items:flex-end;justify-content:center}
+.ng-label{font-family:var(--font-disp);font-size:22px;color:var(--p);text-shadow:0 0 12px rgba(204,68,255,.4)}
+.ng-sublabel{font-size:8px;color:rgba(204,68,255,.5);letter-spacing:2px;text-align:center}
+
+.timeline-item{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border2);font-size:9px}
+.tl-time{color:rgba(0,255,136,.4);white-space:nowrap;width:55px;flex-shrink:0}
+.tl-dot{width:6px;height:6px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.tl-dot.g{background:var(--g);box-shadow:0 0 4px var(--g)}
+.tl-dot.a{background:var(--a);box-shadow:0 0 4px var(--a)}
+.tl-dot.r{background:var(--r);box-shadow:0 0 4px var(--r)}
+.tl-dot.b{background:var(--b);box-shadow:0 0 4px var(--b)}
+.tl-content{flex:1}
+.tl-title{color:var(--g);margin-bottom:1px}
+.tl-sub{color:rgba(0,255,136,.4)}
+
+/* ====== DOCS PAGE ====== */
+#page-docs{flex-direction:column;overflow-y:auto}
+#page-docs::-webkit-scrollbar{width:4px}
+#page-docs::-webkit-scrollbar-thumb{background:var(--border)}
+.docs-layout{max-width:900px;margin:0 auto;padding:24px 32px 80px;width:100%}
+.docs-h1{font-family:var(--font-disp);font-size:22px;font-weight:900;letter-spacing:6px;color:var(--g);text-shadow:0 0 30px rgba(0,255,136,.3);margin-bottom:6px}
+.docs-sub{color:var(--gd);font-size:11px;letter-spacing:3px;margin-bottom:30px}
+.docs-section{margin-bottom:32px}
+.docs-section h2{font-family:var(--font-disp);font-size:11px;letter-spacing:4px;color:var(--a);border-bottom:1px solid rgba(255,180,0,.2);padding-bottom:6px;margin-bottom:14px}
+.docs-section h3{font-family:var(--font-disp);font-size:9px;letter-spacing:3px;color:var(--b);margin:16px 0 8px}
+.docs-section p{font-family:var(--font-body);font-size:12px;color:rgba(0,255,136,.75);line-height:1.8;margin-bottom:10px}
+.docs-section ul{font-family:var(--font-body);font-size:12px;color:rgba(0,255,136,.75);line-height:2;padding-left:20px}
+.docs-section li::marker{color:var(--gd)}
+.docs-callout{background:rgba(0,200,255,.05);border-left:2px solid var(--b);padding:10px 14px;margin:12px 0;font-family:var(--font-body);font-size:11px;color:rgba(0,200,255,.8);line-height:1.7}
+.docs-callout.warn{background:rgba(255,180,0,.05);border-color:var(--a);color:rgba(255,180,0,.8)}
+.docs-callout.spec{background:rgba(204,68,255,.05);border-color:var(--p);color:rgba(204,68,255,.8)}
+.docs-table{width:100%;font-size:10px;border-collapse:collapse;margin:12px 0}
+.docs-table th{color:var(--gd);letter-spacing:2px;padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;font-weight:normal;font-family:var(--font-disp);font-size:8px}
+.docs-table td{padding:5px 10px;border-bottom:1px solid var(--border2);color:var(--g);font-family:var(--font-body)}
+.docs-table td:first-child{color:var(--a);font-family:var(--font-mono)}
+.docs-table tr:hover td{background:var(--gf)}
+.api-endpoint{background:rgba(0,0,0,.5);border:1px solid var(--border2);padding:8px 12px;margin:8px 0;font-size:10px;display:flex;align-items:center;gap:10px}
+.api-method{font-family:var(--font-disp);font-size:8px;padding:2px 6px;letter-spacing:1px}
+.api-method.get{background:rgba(0,255,136,.1);color:var(--g);border:1px solid var(--border)}
+.api-method.ws{background:rgba(0,200,255,.1);color:var(--b);border:1px solid rgba(0,200,255,.2)}
+.api-url{color:var(--b);font-family:var(--font-mono);flex:1}
+.api-desc{color:var(--gd);font-size:9px}
+code{background:rgba(0,255,136,.08);padding:1px 5px;border-radius:2px;color:var(--g);font-family:var(--font-mono);font-size:10px}
+.spec-block{background:rgba(204,68,255,.05);border:1px solid rgba(204,68,255,.2);padding:12px;margin:10px 0;font-size:10px}
+.spec-block h4{font-family:var(--font-disp);font-size:8px;letter-spacing:3px;color:var(--p);margin-bottom:8px}
+.spec-row{display:flex;gap:12px;margin-bottom:4px;font-family:var(--font-body);font-size:11px}
+.spec-key{width:160px;color:rgba(204,68,255,.6);flex-shrink:0}
+.spec-val{color:rgba(204,68,255,.9)}
+.toc{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:24px}
+.toc a{color:var(--gd);font-size:10px;letter-spacing:1px;text-decoration:none;padding:4px 8px;border:1px solid var(--border2);transition:all .15s;font-family:var(--font-mono)}
+.toc a:hover{color:var(--g);background:var(--gf);border-color:var(--border)}
+
+/* Bottom bar */
+#terminal-bar{position:fixed;bottom:0;left:0;right:0;height:28px;background:rgba(1,12,3,.95);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;font-size:9px;letter-spacing:1px;color:var(--gd);z-index:500;gap:16px;overflow:hidden}
+#terminal-scroll{flex:1;overflow:hidden;white-space:nowrap}
+#terminal-prefix{color:rgba(0,255,136,.35);flex-shrink:0}
+.tb-stat{color:var(--g);flex-shrink:0;border-left:1px solid var(--border2);padding-left:12px}
+.tb-stat span{color:var(--gd)}
+</style>
+</head>
+<body>
+
+<!-- ALERT BANNER -->
+<div id="alert-banner">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="ab-icon" style="font-size:18px">☢</span>
+    <span id="ab-text">CRITICAL FART SIGNAL DETECTED</span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <span id="ab-coords" style="font-size:9px;letter-spacing:2px;opacity:.7"></span>
+    <button onclick="dismissAlert()" style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;background:transparent;border:1px solid currentColor;color:inherit;padding:3px 10px;cursor:pointer">DISMISS</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">GFSD<em>-9000</em></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="setPage('main')" id="tab-main"><span class="tab-dot"></span>SCANNER</button>
+    <button class="nav-tab" onclick="setPage('sono')" id="tab-sono"><span class="tab-dot"></span>SONIFICATION</button>
+    <button class="nav-tab" onclick="setPage('sat')" id="tab-sat"><span class="tab-dot"></span>SATELLITE DATA</button>
+    <button class="nav-tab" onclick="setPage('docs')" id="tab-docs"><span class="tab-dot"></span>DOCS</button>
+  </div>
+  <div class="nav-right">
+    <div class="sys-status"><div class="sdot" id="sys-sdot"></div><span id="sys-label">NOMINAL</span></div>
+    <div id="clock">00:00:00</div>
+  </div>
+</nav>
+
+<!-- ================================================================ PAGE: MAIN ================================================================ -->
+<div class="page active" id="page-main">
+<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+  <div id="live-data-bar">
+    <div class="ld-dot"></div>
+    <span>LIVE DATA FEEDS:</span>
+    <span id="ldb-gwosc" style="color:rgba(0,200,255,.5)">GWOSC ○</span>
+    <span id="ldb-nasa" style="color:rgba(0,200,255,.5)">NASA DONKI ○</span>
+    <span id="ldb-nsat" style="color:rgba(204,68,255,.5)">NEUTRINO-SAT ◎ SIMULATED</span>
+    <span style="margin-left:auto;color:rgba(0,255,136,.3)">DRAG CURSOR ON RADAR TO PROBE · CLICK TO INJECT SIGNAL</span>
+  </div>
+  <div class="main-layout" style="flex:1;overflow:hidden">
+
+    <!-- RADAR COL -->
+    <div class="radar-col">
+      <div class="radar-wrap">
+        <canvas id="radar-canvas"></canvas>
+        <div class="radar-crosshair-info">
+          <span>RA: <b id="c-ra">---</b></span>
+          <span>DEC: <b id="c-dec">---</b></span>
+          <span>DIST: <b id="c-dist">---</b></span>
+          <span>SIGNAL: <b id="c-sig">---</b></span>
+          <span>SPECIES: <b id="c-sp">---</b></span>
+        </div>
+      </div>
+      <div class="radar-footer">
+        <div class="rf-cell"><div class="lbl">CONTACTS</div><div class="val" id="rf-contacts">00</div></div>
+        <div class="rf-cell"><div class="lbl">PEAK dBm</div><div class="val warn" id="rf-peak">---</div></div>
+        <div class="rf-cell"><div class="lbl">THREAT</div><div class="val" id="rf-threat">NOMINAL</div></div>
+        <div class="rf-cell"><div class="lbl">SCAN Hz</div><div class="val" id="rf-hz">0.50</div></div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar-col">
+
+      <!-- Controls -->
+      <div class="s-panel">
+        <div class="s-panel-hd"><span>SENSOR CONFIG</span><em id="scan-mode-lbl">AUTO</em></div>
+        <div class="ctrl-grid">
+          <div class="ctrl-row"><label>SCAN SPEED</label><input type="range" id="scan-speed" min="1" max="12" value="5" oninput="onCtrl()"><span class="ctrl-val" id="sv-ss">5</span></div>
+          <div class="ctrl-row"><label>SENSITIVITY</label><input type="range" id="sensitivity" min="1" max="10" value="6" oninput="onCtrl()"><span class="ctrl-val" id="sv-sen">6</span></div>
+          <div class="ctrl-row"><label>RANGE (PC)</label>
+            <select id="range-sel" onchange="onCtrl()">
+              <option value="1e4">10K</option>
+              <option value="1e5">100K</option>
+              <option value="1e6" selected>1M</option>
+            </select>
+          </div>
+          <div class="ctrl-row"><label>SPECIES FILTER</label>
+            <select id="species-filter">
+              <option>ALL</option><option>VOGON</option><option>ZAPHOD-CLASS</option><option>MARVIN-PATTERN</option><option>UNKNOWN</option><option>ARTHUR-DENT</option>
+            </select>
+          </div>
+          <div class="ctrl-row"><label>DATA SOURCE</label>
+            <select id="data-source" onchange="onDataSource()">
+              <option value="sim">SIMULATED</option>
+              <option value="gwosc">GWOSC + SIM</option>
+              <option value="nasa">NASA DONKI + SIM</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" onclick="manualScan()">SCAN NOW</button>
+          <button class="btn" id="audio-btn" onclick="toggleAudio()">AUDIO OFF</button>
+          <button class="btn danger" onclick="clearAll()">CLEAR</button>
+        </div>
+      </div>
+
+      <!-- Bio Composition -->
+      <div class="s-panel">
+        <div class="s-panel-hd"><span>BIO-SONIC COMPOSITION</span><em id="comp-species">---</em></div>
+        <div class="comp-bars">
+          <div class="bar-row"><span class="bar-lbl">METHANE</span><div class="bar-track"><div class="bar-fill methane" id="bar-methane" style="width:0"></div></div><span class="bar-val" id="bv-methane">0%</span></div>
+          <div class="bar-row"><span class="bar-lbl">SULFUR H₂S</span><div class="bar-track"><div class="bar-fill sulfur" id="bar-sulfur" style="width:0"></div></div><span class="bar-val" id="bv-sulfur">0%</span></div>
+          <div class="bar-row"><span class="bar-lbl">SONIC BURST</span><div class="bar-track"><div class="bar-fill sonic" id="bar-sonic" style="width:0"></div></div><span class="bar-val" id="bv-sonic">0%</span></div>
+          <div class="bar-row"><span class="bar-lbl">BIO-TOXIN</span><div class="bar-track"><div class="bar-fill bio" id="bar-bio" style="width:0"></div></div><span class="bar-val" id="bv-bio">0%</span></div>
+          <div class="bar-row"><span class="bar-lbl">QUANTUM GAS</span><div class="bar-track"><div class="bar-fill quantum" id="bar-quantum" style="width:0"></div></div><span class="bar-val" id="bv-quantum">0%</span></div>
+        </div>
+      </div>
+
+      <!-- Waveform -->
+      <div class="s-panel">
+        <div class="s-panel-hd"><span>NEUTRINO WAVEFORM</span><em id="wf-freq">42.0 Hz</em></div>
+        <div class="waveform-wrap">
+          <canvas id="waveform-canvas" height="60"></canvas>
+        </div>
+        <div class="wave-controls">
+          <span class="wave-lbl">MODE:</span>
+          <select id="wf-mode" style="flex:1;margin:0" onchange="wfMode=this.value">
+            <option value="wave">WAVEFORM</option>
+            <option value="spectrum">SPECTRUM</option>
+            <option value="neutrino">NEUTRINO FLUX</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="s-panel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div class="s-panel-hd"><span>INTERCEPT LOG</span><em id="log-count">0</em></div>
+        <div class="log-scroll" id="signal-log"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================ PAGE: SONIFICATION ================================================================ -->
+<div class="page" id="page-sono">
+<div class="sono-layout">
+
+  <div class="sono-panel">
+    <div class="sono-hd"><b>SPECTROGRAM</b> // REAL-TIME FOURIER TRANSFORM</div>
+    <div class="sono-body">
+      <canvas id="spectrogram-canvas" height="200"></canvas>
+      <canvas id="oscilloscope-canvas" height="120"></canvas>
+      <div class="freq-grid">
+        <div class="freq-card"><div class="fc-val" id="fn-freq">---</div><div class="fc-lbl">DOMINANT FREQ</div><div class="fc-sub">Hz</div></div>
+        <div class="freq-card"><div class="fc-val" id="fn-amp">---</div><div class="fc-lbl">AMPLITUDE</div><div class="fc-sub">dB normalised</div></div>
+        <div class="freq-card"><div class="fc-val" id="fn-bw">---</div><div class="fc-lbl">BANDWIDTH</div><div class="fc-sub">Hz (FWHM)</div></div>
+        <div class="freq-card"><div class="fc-val" id="fn-snr">---</div><div class="fc-lbl">SNR RATIO</div><div class="fc-sub">dB</div></div>
+      </div>
+      <div style="font-size:9px;color:var(--gd);letter-spacing:2px;margin-bottom:8px">SIGNAL-TO-TONE MAPPING</div>
+      <table class="mapping-table">
+        <tr><th>PARAMETER</th><th>MAPPED TO</th><th>RANGE</th></tr>
+        <tr><td>Signal strength</td><td>Oscillator frequency</td><td>80–2400 Hz</td></tr>
+        <tr><td>Methane %</td><td>Filter cutoff</td><td>200–8000 Hz</td></tr>
+        <tr><td>Distance (Mpc)</td><td>Reverb decay</td><td>0.1–4.0 s</td></tr>
+        <tr><td>Sulfur %</td><td>Distortion gain</td><td>1.0–20.0</td></tr>
+        <tr><td>Quantum gas %</td><td>LFO rate</td><td>0.1–12 Hz</td></tr>
+        <tr><td>Species class</td><td>Waveform type</td><td>sine/sq/tri/saw</td></tr>
+        <tr><td>Threat level</td><td>Master gain</td><td>0.1–1.0</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="sono-panel">
+    <div class="sono-hd"><b>SYNTHESISER</b> // MANUAL SIGNAL GENERATION</div>
+    <div class="sono-body">
+      <div style="font-size:9px;color:var(--gd);letter-spacing:2px;margin-bottom:10px">SPECIES SIGNAL TONES // CLICK TO AUDITION</div>
+      <div class="synth-grid" id="synth-grid">
+        <button class="synth-btn" onclick="playSpeciesTone('vogon',this)">VOGON<br>BUREAUCRATIC</button>
+        <button class="synth-btn" onclick="playSpeciesTone('zaphod',this)">ZAPHOD<br>MEGADODO</button>
+        <button class="synth-btn" onclick="playSpeciesTone('marvin',this)">MARVIN<br>DEPRESSED-GAS</button>
+        <button class="synth-btn" onclick="playSpeciesTone('slartibartfast',this)">SLARTI<br>FJORD-BURST</button>
+        <button class="synth-btn" onclick="playSpeciesTone('trillian',this)">TRILLIAN<br>RESONANT</button>
+        <button class="synth-btn" onclick="playSpeciesTone('unknown',this)">UNKNOWN<br>ENTITY</button>
+        <button class="synth-btn" onclick="playSpeciesTone('quantum',this)">QUANTUM<br>PHASE-FART</button>
+        <button class="synth-btn" onclick="playSpeciesTone('hyperspace',this)">HYPERSPACE<br>SLIP-FART</button>
+        <button class="synth-btn" onclick="playSpeciesTone('critical',this)">CRITICAL<br>THREAT TONE</button>
+      </div>
+
+      <div style="font-size:9px;color:var(--gd);letter-spacing:2px;margin:14px 0 8px">PIANO ROLL // RECENT DETECTIONS</div>
+      <canvas id="piano-canvas" width="280" height="80" style="width:100%;height:80px;display:block;border:1px solid var(--border2);margin-bottom:10px"></canvas>
+
+      <div style="font-size:9px;color:var(--gd);letter-spacing:2px;margin-bottom:8px">REALTIME CONTROLS</div>
+      <div class="ctrl-grid">
+        <div class="ctrl-row"><label style="width:100px">MASTER VOLUME</label><input type="range" id="vol-master" min="0" max="100" value="60" oninput="setMasterVol(this.value)"><span class="ctrl-val" id="sv-vol">60</span></div>
+        <div class="ctrl-row"><label style="width:100px">REVERB DEPTH</label><input type="range" id="rev-depth" min="0" max="100" value="40" oninput="setReverb(this.value)"><span class="ctrl-val" id="sv-rev">40</span></div>
+        <div class="ctrl-row"><label style="width:100px">LFO DEPTH</label><input type="range" id="lfo-depth" min="0" max="100" value="30" oninput="setLFO(this.value)"><span class="ctrl-val" id="sv-lfo">30</span></div>
+        <div class="ctrl-row"><label style="width:100px">WAVEFORM</label>
+          <select id="osc-type" style="flex:1;margin:0" onchange="setOscType(this.value)">
+            <option value="sine">SINE</option>
+            <option value="square">SQUARE</option>
+            <option value="sawtooth">SAWTOOTH</option>
+            <option value="triangle">TRIANGLE</option>
+          </select>
+        </div>
+      </div>
+      <div style="padding:8px 0 0;display:flex;gap:6px">
+        <button class="btn" onclick="toggleAudio()" id="sono-audio-btn">ENABLE AUDIO</button>
+        <button class="btn" onclick="playAllTones()">SWEEP ALL TONES</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ================================================================ PAGE: SATELLITE DATA ================================================================ -->
+<div class="page" id="page-sat">
+<div class="sat-layout" style="flex:1;overflow:hidden">
+
+  <!-- COL 1: Real APIs -->
+  <div class="sat-col">
+    <div class="sat-hd"><span>REAL-WORLD DATA FEEDS</span><em id="gwosc-status">LOADING...</em></div>
+    <div class="sat-connect-status">
+      <div class="conn-indicator" id="gwosc-ind"></div>
+      <span id="gwosc-conn-lbl">GWOSC (Gravitational Wave Open Science Center)</span>
+    </div>
+    <div class="sat-body" id="gwosc-body">
+      <div style="color:var(--gd);font-size:9px;padding:10px">Fetching latest gravitational wave events...</div>
+    </div>
+  </div>
+
+  <!-- COL 2: Simulated NEUTRINO-SAT -->
+  <div class="sat-col">
+    <div class="sat-hd"><span>NEUTRINO-SAT PRIME // SIMULATED</span><em>ONLINE</em></div>
+    <div class="sat-connect-status">
+      <div class="conn-indicator simulated"></div>
+      <span>NEUTRINO-SAT-1 // L4 LAGRANGE POINT</span>
+    </div>
+    <div class="sat-body">
+      <div class="neutrino-gauge">
+        <div class="ng-title">NEUTRINO FLUX DENSITY</div>
+        <div class="ng-arc-wrap"><div class="ng-label" id="neutrino-flux">0.00</div></div>
+        <div class="ng-sublabel">× 10⁻¹² cm⁻² s⁻¹ sr⁻¹</div>
+      </div>
+      <div class="data-card">
+        <span class="dc-badge sim">SIM</span>
+        <div class="dc-title">METHANE COLUMN DENSITY</div>
+        <div class="dc-val warn" id="sat-methane">---</div>
+        <div class="dc-desc">Mean galactic methane anomaly index via NIRD spectroscopy</div>
+        <div class="dc-meta">UPDATE INTERVAL: 4.2s // RESOLUTION: 0.03 arc-sec</div>
+      </div>
+      <div class="data-card">
+        <span class="dc-badge sim">SIM</span>
+        <div class="dc-title">SONIC PRESSURE WAVE EVENTS</div>
+        <div class="dc-val" id="sat-sonic-events">---</div>
+        <div class="dc-desc">Sub-Hz pressure anomalies propagating through interstellar medium</div>
+        <div class="dc-meta">LAST 24H // THRESHOLD: 10⁻¹⁸ Pa</div>
+      </div>
+      <div class="data-card">
+        <span class="dc-badge sim">SIM</span>
+        <div class="dc-title">QUANTUM ENTANGLEMENT FUMES</div>
+        <div class="dc-val" id="sat-qe">---</div>
+        <div class="dc-desc">Entangled gas molecule pair detection (non-classical correlation ≥ 0.82)</div>
+        <div class="dc-meta">BELL INEQUALITY VIOLATION INDEX</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL 3: Timeline + NASA -->
+  <div class="sat-col">
+    <div class="sat-hd"><span>EVENT TIMELINE</span><em id="nasa-status">LOADING NASA...</em></div>
+    <div class="sat-connect-status">
+      <div class="conn-indicator" id="nasa-ind"></div>
+      <span id="nasa-conn-lbl">NASA DONKI // SPACE WEATHER</span>
+    </div>
+    <div class="sat-body" id="nasa-body">
+      <div style="color:var(--gd);font-size:9px;padding:10px">Fetching NASA space weather data...</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ================================================================ PAGE: DOCS ================================================================ -->
+<div class="page" id="page-docs">
+<div class="docs-layout">
+  <div class="docs-h1">GFSD-9000 v2</div>
+  <div class="docs-sub">GALACTIC FART SIGNAL DETECTOR // TECHNICAL DOCUMENTATION // HEART OF GOLD INTELLIGENCE DIVISION</div>
+
+  <div class="toc">
+    <a href="#overview">01 — OVERVIEW</a>
+    <a href="#real-apis">02 — REAL-WORLD DATA SOURCES</a>
+    <a href="#neutrino-sat">03 — NEUTRINO-SAT ARCHITECTURE</a>
+    <a href="#detection">04 — DETECTION METHODOLOGY</a>
+    <a href="#sonification">05 — DATA SONIFICATION</a>
+    <a href="#signal-types">06 — SIGNAL CLASSIFICATION</a>
+    <a href="#api-ref">07 — API REFERENCE</a>
+    <a href="#species">08 — KNOWN SPECIES SIGNATURES</a>
+  </div>
+
+  <div class="docs-section" id="overview">
+    <h2>01 — SYSTEM OVERVIEW</h2>
+    <p>The GFSD-9000 is a geospatial intelligence platform for the real-time detection, classification, and sonification of bio-sonic anomaly signals originating from galactic distances of up to 1,000,000 parsecs (approximately 3.26 million light-years). The system integrates real-world space science data feeds with a forward-looking neutrino-radar detection architecture designed for the advanced detection of minute element fluctuation anomalies propagated through interstellar and intergalactic media.</p>
+    <div class="docs-callout">
+      <strong>OPERATOR NOTE (BEEBELBROX PROTOCOL):</strong> This system is calibrated for the specific acoustic and chemical fingerprint of bio-sonic expulsion events (colloquially: farts) across all known intelligent species within the observable Local Group. Classification accuracy degrades beyond 800,000 parsecs due to cosmic microwave background interference.
+    </div>
+    <p>The interface provides four operational modes: the primary Scanner view with live radar overlay; the Sonification Engine for acoustic intelligence analysis; the Satellite Data dashboard for real and simulated feed integration; and this technical documentation.</p>
+  </div>
+
+  <div class="docs-section" id="real-apis">
+    <h2>02 — REAL-WORLD DATA SOURCES</h2>
+    <p>While no publicly available API currently provides galactic fart signal data specifically (a gap we consider unconscionable), the GFSD-9000 integrates with two real open-data sources whose anomaly signatures are repurposed as fart-proxy signals. Both APIs are freely accessible without authentication.</p>
+
+    <h3>GRAVITATIONAL WAVE OPEN SCIENCE CENTER (GWOSC)</h3>
+    <p>The GWOSC provides public access to strain data from the LIGO, Virgo, and KAGRA gravitational wave observatory network. Detected merger events (black holes, neutron stars) are re-classified by our AI as high-energy quantum-phase fart events — because at sub-parsec scales, the distinction is largely philosophical.</p>
+    <div class="api-endpoint">
+      <span class="api-method get">GET</span>
+      <span class="api-url">https://gwosc.org/eventapi/json/allevents/</span>
+      <span class="api-desc">Full gravitational wave event catalog</span>
+    </div>
+    <div class="api-endpoint">
+      <span class="api-method get">GET</span>
+      <span class="api-url">https://gwosc.org/eventapi/json/query/?release=GWTC-3</span>
+      <span class="api-desc">Third observing run catalog</span>
+    </div>
+    <div class="docs-callout">
+      <strong>DATA MAPPING:</strong> GWOSC events are ingested and their strain values (10⁻²¹ m/m) are mapped to our signal strength scale (dBm). Event luminosity distance (Mpc) maps directly to radar distance. Source classification (BBH, BNS, NSBH) maps to our species taxonomy. Chirp mass maps to methane concentration index.
+    </div>
+
+    <h3>NASA DONKI (SPACE WEATHER DATABASE)</h3>
+    <p>NASA's DONKI API provides real-time solar and space weather event data including coronal mass ejections (CMEs), solar flares, geomagnetic storms, and radiation belt enhancements. These solar plasma expulsions are, obviously, the sun's farts — and are classified as a Class-G VOGON-SOLAR signal type in our taxonomy.</p>
+    <div class="api-endpoint">
+      <span class="api-method get">GET</span>
+      <span class="api-url">https://api.nasa.gov/DONKI/CME?startDate=YYYY-MM-DD&api_key=DEMO_KEY</span>
+      <span class="api-desc">Coronal mass ejection events (solar farts)</span>
+    </div>
+    <div class="api-endpoint">
+      <span class="api-method get">GET</span>
+      <span class="api-url">https://api.nasa.gov/DONKI/FLR?api_key=DEMO_KEY</span>
+      <span class="api-desc">Solar flare events (sonic component)</span>
+    </div>
+    <div class="api-endpoint">
+      <span class="api-method get">GET</span>
+      <span class="api-url">https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY</span>
+      <span class="api-desc">Astronomy picture — used for background ambience seeding</span>
+    </div>
+
+    <table class="docs-table">
+      <tr><th>DATA SOURCE</th><th>STATUS</th><th>AUTH REQUIRED</th><th>RATE LIMIT</th><th>FART PROXY TYPE</th></tr>
+      <tr><td>GWOSC Events API</td><td>✓ LIVE</td><td>None</td><td>None stated</td><td>Quantum-phase fart</td></tr>
+      <tr><td>NASA DONKI CME</td><td>✓ LIVE</td><td>Optional (DEMO_KEY)</td><td>1000/hr</td><td>Vogon-solar fart</td></tr>
+      <tr><td>NASA DONKI FLR</td><td>✓ LIVE</td><td>Optional (DEMO_KEY)</td><td>1000/hr</td><td>Sonic burst component</td></tr>
+      <tr><td>NEUTRINO-SAT PRIME</td><td>◎ SIMULATED</td><td>Future: HMAC-SHA256</td><td>N/A</td><td>All types</td></tr>
+    </table>
+  </div>
+
+  <div class="docs-section" id="neutrino-sat">
+    <h2>03 — NEUTRINO-SAT ARCHITECTURE // FUTURE PRODUCTION SYSTEM</h2>
+    <p>The production NEUTRINO-SAT constellation is a proposed deep-space sensor network designed specifically for the detection of bio-sonic anomaly signatures at galactic scale. The following specifications represent the envisioned system for deployment circa 2031–2035.</p>
+
+    <div class="spec-block">
+      <h4>NEUTRINO-SAT PRIME // ORBITAL SPECIFICATIONS</h4>
+      <div class="spec-row"><span class="spec-key">Orbital Position</span><span class="spec-val">Sun-Earth L4 Lagrange Point (60° ahead of Earth)</span></div>
+      <div class="spec-row"><span class="spec-key">Constellation Size</span><span class="spec-val">3 primary nodes + 12 relay micro-sats</span></div>
+      <div class="spec-row"><span class="spec-key">Baseline Separation</span><span class="spec-val">2.5 × 10⁹ km (interferometric baseline)</span></div>
+      <div class="spec-row"><span class="spec-key">Mission Lifetime</span><span class="spec-val">15 years (extendable)</span></div>
+      <div class="spec-row"><span class="spec-key">Launch Vehicle</span><span class="spec-val">Heart of Gold Improbability Drive Mk.IV</span></div>
+    </div>
+
+    <div class="spec-block">
+      <h4>DETECTION TECHNOLOGY // NEUTRINO-EMISSION RADAR (NER)</h4>
+      <div class="spec-row"><span class="spec-key">Primary Sensor</span><span class="spec-val">Muon neutrino tomography array (10⁶ channels)</span></div>
+      <div class="spec-row"><span class="spec-key">Detection Mechanism</span><span class="spec-val">Coherent elastic neutrino-nucleus scattering (CEνNS)</span></div>
+      <div class="spec-row"><span class="spec-key">Neutrino Energy Range</span><span class="spec-val">5 MeV – 100 GeV (broadband)</span></div>
+      <div class="spec-row"><span class="spec-key">Angular Resolution</span><span class="spec-val">0.03 arc-seconds at 1 Mpc</span></div>
+      <div class="spec-row"><span class="spec-key">Max Detection Range</span><span class="spec-val">1.2 × 10⁶ parsecs (Local Group limit)</span></div>
+      <div class="spec-row"><span class="spec-key">Sensitivity</span><span class="spec-val">10⁻¹² cm⁻² s⁻¹ sr⁻¹ (flux density)</span></div>
+    </div>
+
+    <div class="docs-callout spec">
+      <strong>HOW NEUTRINO-RADAR DETECTS FARTS THROUGH MATTER:</strong> Unlike electromagnetic radiation, neutrinos pass through virtually all matter — planets, star cores, entire galaxies — with negligible absorption. The NEUTRINO-SAT system actively pulses a directional neutrino beam (via stimulated weak-force emission from an enriched muon-catalysis chamber) and measures the backscatter coherence pattern. Bio-sonic events produce a unique chemical trail of CH₄/H₂S/volatile organics that modulates the neutrino cross-section at 10⁻⁴³ cm² resolution. The system can thus detect a Vogon flatulence event from behind a neutron star at 800,000 parsecs.
+    </div>
+
+    <h3>SIGNAL PROPAGATION MODEL</h3>
+    <p>Fart signals propagate through the interstellar medium via three distinct channels: (1) acoustic pressure waves through dense molecular clouds (range: ~50 light-years), (2) chemical tracer diffusion detectable by molecular spectroscopy (range: ~10,000 light-years), and (3) neutrino-modulated quantum coherence signatures detectable by NEUTRINO-SAT (range: ~1,000,000 parsecs). The GFSD-9000 integrates all three channels.</p>
+
+    <table class="docs-table">
+      <tr><th>CHANNEL</th><th>PROPAGATION MEDIUM</th><th>MAX RANGE</th><th>LATENCY</th><th>RESOLUTION</th></tr>
+      <tr><td>Acoustic</td><td>ISM molecular clouds</td><td>50 ly</td><td>50 years</td><td>High (chemical detail)</td></tr>
+      <tr><td>Spectroscopic</td><td>H-alpha + CH₄ bands</td><td>10,000 ly</td><td>10,000 years</td><td>Medium (species ID)</td></tr>
+      <tr><td>Neutrino coherence</td><td>All media (penetrating)</td><td>1,000,000 pc</td><td>3.26M years</td><td>Low (event confirmed)</td></tr>
+    </table>
+  </div>
+
+  <div class="docs-section" id="detection">
+    <h2>04 — DETECTION METHODOLOGY</h2>
+    <p>The GFSD-9000 radar uses a rotating synthetic aperture neutrino beam sweep. The sweep arm rotates at a configurable rate (0.125–1.5 Hz) and paints the galactic sphere with a coherent neutrino pulse. Returns are processed by a matched-filter bank tuned to 42 known bio-sonic spectral templates (one for each answer to the ultimate question).</p>
+    <p>Signal classification uses a multi-stage pipeline: (1) threshold detection at -90 dBm, (2) spectral fingerprinting against species library, (3) chemical composition decomposition (methane/sulfur/bio-toxin/quantum-gas/sonic), and (4) threat-level assignment based on combined intensity and proximity weighting.</p>
+
+    <h3>THREAT CLASSIFICATION MATRIX</h3>
+    <table class="docs-table">
+      <tr><th>LEVEL</th><th>dBm RANGE</th><th>DISTANCE</th><th>COMPOSITION</th><th>RESPONSE</th></tr>
+      <tr><td>NOMINAL</td><td>&lt; -70 dBm</td><td>&gt; 500 kpc</td><td>Standard</td><td>Log only</td></tr>
+      <tr><td>ELEVATED</td><td>-70 to -50 dBm</td><td>50–500 kpc</td><td>Elevated CH₄</td><td>Alert + audio</td></tr>
+      <tr><td>CRITICAL</td><td>-50 to -30 dBm</td><td>1–50 kpc</td><td>High H₂S + sonic</td><td>Emergency tone</td></tr>
+      <tr><td>MAXIMUM</td><td>&gt; -30 dBm</td><td>&lt; 1 kpc</td><td>All agents</td><td>Don't panic</td></tr>
+    </table>
+  </div>
+
+  <div class="docs-section" id="sonification">
+    <h2>05 — DATA SONIFICATION ENGINE</h2>
+    <p>The sonification system uses the Web Audio API to translate multi-dimensional signal data into a real-time auditory experience. Each detection event generates a synthesised tone whose acoustic properties are fully determined by the signal's measured parameters.</p>
+
+    <h3>FREQUENCY MAPPING</h3>
+    <p>Signal strength (dBm) maps logarithmically to oscillator frequency: <code>freq = 80 * Math.pow(2400/80, (signal+90)/60)</code> Hz, spanning 80 Hz (weakest detectable) to 2400 Hz (maximum threat). This places Vogon bureaucratic fart signals in the uncomfortable 800–1200 Hz band, as is scientifically appropriate.</p>
+
+    <h3>CHAIN ARCHITECTURE</h3>
+    <p>The synthesis chain consists of: Oscillator → Gain (velocity) → BiquadFilter (methane-modulated) → WaveShaper (sulfur distortion) → ConvolverNode (space reverb) → DynamicsCompressor → Analyser → MasterGain → AudioContext.destination. A secondary LFO oscillator modulates filter cutoff at a rate set by quantum-gas concentration.</p>
+
+    <div class="docs-callout">
+      <strong>CLICK AUDIO ON/OFF</strong> in the Scanner tab or use the SONIFICATION tab to audition individual species tones. All synthesis happens client-side — no audio data is transmitted. The system requires user interaction to initialise the AudioContext per Web Audio API browser policy.
+    </div>
+  </div>
+
+  <div class="docs-section" id="signal-types">
+    <h2>06 — SIGNAL CLASSIFICATION TAXONOMY</h2>
+    <table class="docs-table">
+      <tr><th>CLASS</th><th>DESIGNATION</th><th>INDICATOR</th><th>TYPICAL RANGE</th><th>NOTES</th></tr>
+      <tr><td>GAS-CLOUD-7</td><td>Distributed methane nebula</td><td>Slow rise, long tail</td><td>100–500 kpc</td><td>Usually harmless</td></tr>
+      <tr><td>METHANE-BURST</td><td>Acute CH₄ detonation</td><td>Sharp spike, fast decay</td><td>10–100 kpc</td><td>Avoid open flames</td></tr>
+      <tr><td>SULFURIC-WAVE</td><td>H₂S broadband emission</td><td>Wide spectrum, low freq</td><td>50–200 kpc</td><td>Olfactory hazard</td></tr>
+      <tr><td>QUANTUM-TOOT</td><td>Non-classical entangled gas</td><td>Non-local correlation</td><td>Any</td><td>Spooky action</td></tr>
+      <tr><td>BIO-SONIC</td><td>Acoustic pressure event</td><td>Narrow freq, high Q</td><td>&lt;50 kpc</td><td>Direct weapon use</td></tr>
+      <tr><td>SILENT-BUT-DEADLY</td><td>Low-emission, high-toxin</td><td>Very weak signal, max bio</td><td>1–20 kpc</td><td>CRITICAL THREAT</td></tr>
+      <tr><td>HYPERSPACE-FUME</td><td>Dimensional bleed event</td><td>Discontinuous signature</td><td>Any</td><td>Improbability drive</td></tr>
+    </table>
+  </div>
+
+  <div class="docs-section" id="api-ref">
+    <h2>07 — FUTURE PRODUCTION API REFERENCE</h2>
+    <p>The following endpoints are planned for the NEUTRINO-SAT Ground Control API (production deployment 2031). All endpoints return JSON. Authentication uses HMAC-SHA256 with rotating 42-second keys.</p>
+    <div class="api-endpoint"><span class="api-method get">GET</span><span class="api-url">/api/v1/scan/live</span><span class="api-desc">Current sweep data, all contacts</span></div>
+    <div class="api-endpoint"><span class="api-method ws">WS</span><span class="api-url">wss://neutrino-sat.heartofgold.int/stream</span><span class="api-desc">Real-time signal stream (WebSocket)</span></div>
+    <div class="api-endpoint"><span class="api-method get">GET</span><span class="api-url">/api/v1/events?since=ISO8601&range=parsecs</span><span class="api-desc">Historical event log with filtering</span></div>
+    <div class="api-endpoint"><span class="api-method get">GET</span><span class="api-url">/api/v1/composition/{eventId}</span><span class="api-desc">Full chemical decomposition of a signal</span></div>
+    <div class="api-endpoint"><span class="api-method get">GET</span><span class="api-url">/api/v1/neutrino/flux?ra=DEG&dec=DEG&r=PC</span><span class="api-desc">Point-source neutrino flux query</span></div>
+    <div class="api-endpoint"><span class="api-method get">GET</span><span class="api-url">/api/v1/species/identify?fingerprint=BASE64</span><span class="api-desc">Species classification from spectral fingerprint</span></div>
+  </div>
+
+  <div class="docs-section" id="species">
+    <h2>08 — KNOWN SPECIES ACOUSTIC SIGNATURES</h2>
+    <table class="docs-table">
+      <tr><th>SPECIES</th><th>WAVEFORM</th><th>FREQ (Hz)</th><th>CH₄%</th><th>H₂S%</th><th>NOTES</th></tr>
+      <tr><td>VOGON</td><td>Square</td><td>120–180</td><td>45</td><td>38</td><td>Weaponised. Poetry precedes event.</td></tr>
+      <tr><td>ZAPHOD-CLASS</td><td>Sawtooth</td><td>280–420</td><td>30</td><td>22</td><td>Two-headed dual-emission pattern</td></tr>
+      <tr><td>MARVIN-PATTERN</td><td>Sine (depressed)</td><td>42</td><td>18</td><td>15</td><td>Low energy. Brain the size of a planet.</td></tr>
+      <tr><td>SLARTIBARTFAST</td><td>Triangle</td><td>600–800</td><td>52</td><td>8</td><td>Fjord-shaped spectral peaks</td></tr>
+      <tr><td>TRILLIAN</td><td>Sine (clean)</td><td>440–660</td><td>12</td><td>5</td><td>Highly refined. Almost musical.</td></tr>
+      <tr><td>ARTHUR-DENT</td><td>Noisy sine</td><td>200–350</td><td>28</td><td>18</td><td>Confused. Mostly harmless.</td></tr>
+      <tr><td>BUGBLATTER BEAST</td><td>Sawtooth (distorted)</td><td>30–80</td><td>78</td><td>65</td><td>Cannot see you if you cover your eyes</td></tr>
+    </table>
+    <div class="docs-callout warn">⚠ WARNING: If you detect a VOGON signal above -50 dBm, do NOT attempt diplomatic communication. Their poetry is classified as a separate bio-hazard event and will trigger an additional SONIC-BURST classification. Flee at improbable speeds.</div>
+  </div>
+
+</div>
+</div>
+
+<!-- TERMINAL BAR -->
+<div id="terminal-bar">
+  <span id="terminal-prefix">GFSD-9000&gt;</span>
+  <span id="terminal-scroll">AWAITING SIGNAL...</span>
+  <span class="tb-stat"><span>CONTACTS: </span><b id="tb-contacts">0</b></span>
+  <span class="tb-stat"><span>DATA: </span><b id="tb-data-src">SIM</b></span>
+  <span class="tb-stat"><span>AUDIO: </span><b id="tb-audio">OFF</b></span>
+</div>
+
+<script>
+// ===== GLOBALS =====
+const canvas = document.getElementById('radar-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, CX, CY, R;
+let angle = 0, frame = 0;
+let signals = [], logEntries = [], pianoNotes = [];
+let audioCtx = null, masterGain = null, reverbNode = null, analyserNode = null;
+let audioEnabled = false;
+let wfMode = 'wave';
+let alertTO = null;
+let currentPage = 'main';
+let gwoscData = [], nasaData = [];
+
+const SPECIES = ['VOGON','ZAPHOD-CLASS','MARVIN-PATTERN','SLARTIBARTFAST','TRILLIAN','ARTHUR-DENT','RAVENOUS-BUGBLATTER','UNKNOWN-ENTITY'];
+const CLASSES = ['GAS-CLOUD-7','METHANE-BURST','SULFURIC-WAVE','QUANTUM-TOOT','BIO-SONIC','SILENT-BUT-DEADLY','HYPERSPACE-FUME'];
+const TERMS = [
+  'NEUTRINO SWEEP ACTIVE — QUADRANT ALPHA-7 CLEAR',
+  'BEEBELBROX DUAL-HEAD DETECTION MODE ENGAGED',
+  'MARVIN REPORTS: I DETECTED 37 FARTS. I ALSO COMPUTED THE EXACT ENTROPY DECREASE.',
+  'METHANE WAVELENGTH FILTER CALIBRATED TO 42nm REFERENCE',
+  'CHECKING TOTAL PERSPECTIVE VORTEX BUFFER... DO NOT LOOK AT',
+  'VOGON POETRY SHIELD NOMINAL // EARS PLUGGED // PROCEED',
+  'SLARTIBARTFAST FJORD RESONANCE DETECTED — CONFIRMING SIGNATURE',
+  'HYPERSPACE BYPASS SURVEY: 0 OBJECTIONS FILED IN TIME',
+  'QUANTUM ENTANGLEMENT GAS PAIR CORRELATION: 0.91 (SIGNIFICANT)',
+  'SCANNING 1,000,000 PARSEC HEMISPHERE // 42 GALAXY SECTORS // STAND BY',
+  'BUGBLATTER BEAST PROTOCOL: TOWEL NEARBY? CONFIRM.',
+];
+let termIdx = 0;
+
+// ===== RESIZE =====
+function resize() {
+  const wrap = canvas.parentElement;
+  const size = Math.max(100, Math.min(wrap.clientWidth - 40, wrap.clientHeight - 20, 520));
+  W = H = size; canvas.width = W; canvas.height = H;
+  CX = CY = W/2; R = Math.max(10, W/2 - 8);
+}
+
+// ===== AUDIO ENGINE =====
+// Nodes declared at module scope so they persist
+let sweepTickNode = null, sweepTickGain = null;
+let ambientNoiseNode = null, ambientGain = null;
+let ambientFilter = null;
+let threatDroneOsc = null, threatDroneGain = null;
+let sweepLFO = null, sweepLFOGain = null;
+let lastSweepAngle = 0;
+let sweepTickInterval = null;
+let contactEchoQueue = []; // angles of live signals to echo as sweep passes
+
+/* REPLACED — old makeReverb (simple exponential decay, no early reflections)
+function makeReverb_OLD(duration, decay) {
+  const ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  // single exponential envelope only — sounds thin
+}
+*/
+
+// NEW makeReverb — Schroeder-style impulse with early reflections + late diffuse tail
+// Early reflections (0–80ms): sparse discrete bounces that give "room size" perception
+// Late tail (80ms+): dense exponential diffuse field — the classic reverb wash
+function makeReverb(duration, decay) {
+  const sr  = audioCtx.sampleRate;
+  const len = Math.floor(sr * duration);
+  const buf = audioCtx.createBuffer(2, len, sr);
+
+  for (let c = 0; c < 2; c++) {
+    const ch = buf.getChannelData(c);
+
+    // ── Early reflections: 6 discrete echoes within first 80ms ──
+    const erDelays = [0.008, 0.017, 0.031, 0.047, 0.062, 0.078]; // seconds
+    const erGains  = [0.7,   0.55,  0.45,  0.35,  0.28,  0.22 ];
+    erDelays.forEach((d, i) => {
+      const sampleOffset = Math.floor(d * sr);
+      const g = erGains[i] * (c === 0 ? 1 : 0.92); // slight L/R asymmetry
+      if (sampleOffset < len) ch[sampleOffset] += (Math.random() > 0.5 ? 1 : -1) * g;
+    });
+
+    // ── Late diffuse tail: exponential noise from 80ms onwards ──
+    const lateStart = Math.floor(0.08 * sr);
+    for (let i = lateStart; i < len; i++) {
+      const progress = (i - lateStart) / (len - lateStart);
+      // Two-slope decay: fast initial density roll-off, slower tail
+      const env = Math.pow(1 - progress, decay) * (1 + 0.15 * Math.sin(progress * 42)); // slight flutter
+      ch[i] += (Math.random() * 2 - 1) * env * 0.5;
+    }
+
+    // ── Pre-delay gap: 8ms of silence before first reflection ──
+    // (fills the gap so direct sound doesn't smear into reverb)
+    const preDelay = Math.floor(0.008 * sr);
+    for (let i = 0; i < preDelay; i++) ch[i] = 0;
+  }
+
+  const rv = audioCtx.createConvolver();
+  rv.buffer = buf;
+  return rv;
+}
+
+// Two reverbs: short plate for blips, long hall for ambience
+let reverbShort = null, reverbLong = null;
+
+function initAudio() {
+  if (audioCtx) return true;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch(e) { console.warn('AudioContext failed', e); return false; }
+
+  // Master chain
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.7;
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 2048;
+  const comp = audioCtx.createDynamicsCompressor();
+  comp.threshold.value = -18;
+  comp.knee.value = 6;
+  comp.ratio.value = 4;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.15;
+  masterGain.connect(comp);
+  comp.connect(analyserNode);
+  analyserNode.connect(audioCtx.destination);
+
+  // Short reverb (1.2s) for radar blips
+  reverbShort = makeReverb(1.2, 2.5);
+  reverbShort.connect(masterGain);
+
+  // Long reverb (3.5s) for distant echoes and ambience
+  reverbLong = makeReverb(3.5, 1.8);
+  reverbLong.connect(masterGain);
+
+  // Shared reverb alias so old code still works
+  reverbNode = reverbShort;
+
+  // ── AMBIENT SPACE NOISE BED ──
+  // White noise source filtered into a low rumble
+  const noiseLen = audioCtx.sampleRate * 4;
+  const noiseBuf = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
+  ambientNoiseNode = audioCtx.createBufferSource();
+  ambientNoiseNode.buffer = noiseBuf;
+  ambientNoiseNode.loop = true;
+  ambientFilter = audioCtx.createBiquadFilter();
+  ambientFilter.type = 'lowpass';
+  ambientFilter.frequency.value = 120;
+  ambientFilter.Q.value = 0.7;
+  const ambientHPF = audioCtx.createBiquadFilter();
+  ambientHPF.type = 'highpass';
+  ambientHPF.frequency.value = 30;
+  ambientGain = audioCtx.createGain();
+  ambientGain.gain.value = 0.035;
+  ambientNoiseNode.connect(ambientFilter);
+  ambientFilter.connect(ambientHPF);
+  ambientHPF.connect(ambientGain);
+  ambientGain.connect(masterGain);
+  ambientNoiseNode.start();
+
+  // ── SWEEP TICK (metronome-style, fires each sweep rotation) ──
+  startSweepTick();
+
+  // ── THREAT DRONE (silent until crit detected) ──
+  threatDroneOsc = audioCtx.createOscillator();
+  threatDroneOsc.type = 'sawtooth';
+  threatDroneOsc.frequency.value = 55;
+  const threatFilter = audioCtx.createBiquadFilter();
+  threatFilter.type = 'bandpass';
+  threatFilter.frequency.value = 80;
+  threatFilter.Q.value = 3;
+  threatDroneGain = audioCtx.createGain();
+  threatDroneGain.gain.value = 0;
+  threatDroneOsc.connect(threatFilter);
+  threatFilter.connect(threatDroneGain);
+  threatDroneGain.connect(reverbLong);
+  threatDroneOsc.start();
+
+  audioEnabled = true;
+  updateAudioUI();
+  return true;
+}
+
+// Called every frame from loop() — drives sweep-angle-triggered audio
+function audioTick(currentAngle, signalList) {
+  if (!audioCtx || !audioEnabled) return;
+
+  // ── SWEEP PING: fire each full rotation ──
+  const prev = lastSweepAngle;
+  const curr = currentAngle;
+  // Detect wrap-around (prev near 2π, curr near 0)
+  const wrapped = prev > Math.PI * 1.8 && curr < Math.PI * 0.3;
+  if (wrapped) playSweepPing();
+  lastSweepAngle = curr;
+
+  // ── CONTACT ECHO: when sweep arm crosses a live signal angle ──
+  signalList.forEach(s => {
+    if (!s._echoed) s._echoed = false;
+    // Check if sweep arm just swept through signal's angular position
+    const angDiff = angleDiff(curr, s.angle);
+    const prevDiff = angleDiff(prev, s.angle);
+    const sweeping = angDiff < 0.12 && prevDiff > angDiff;
+    if (sweeping && !s._justEchoed) {
+      playContactBlip(s);
+      s._justEchoed = true;
+      setTimeout(() => { s._justEchoed = false; }, 400);
+    }
+  });
+
+  // ── THREAT DRONE: ramp based on crit count ──
+  if (threatDroneGain) {
+    const crits = signalList.filter(s => s.crit).length;
+    const target = Math.min(0.18, crits * 0.06);
+    const now = audioCtx.currentTime;
+    threatDroneGain.gain.setTargetAtTime(target, now, 0.5);
+    if (threatDroneOsc) {
+      threatDroneOsc.frequency.setTargetAtTime(55 + crits * 8, now, 0.3);
+    }
+  }
+}
+
+function angleDiff(a, b) {
+  // Shortest angular distance (unsigned)
+  let d = Math.abs(a - b) % (Math.PI * 2);
+  if (d > Math.PI) d = Math.PI * 2 - d;
+  return d;
+}
+
+/* REPLACED — old playSweepPing (simple sine + overtone, no character)
+function playSweepPing_OLD() {
+  // Primary ping tone — clean sine, short attack, long tail
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, now);
+  osc.frequency.exponentialRampToValueAtTime(440, now + 0.8);
+  ...
+  // Harmonic overtone (one octave up, quieter)
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(1760, now);
+  ...
+}
+*/
+
+// NEW playSweepPing — authentic submarine sonar "PING"
+// Built from 4 layers: FM carrier, metallic ring, sub-harmonic body, and shimmer
+function playSweepPing() {
+  if (!audioCtx || !audioEnabled) return;
+  const now = audioCtx.currentTime;
+  const sr  = audioCtx.sampleRate;
+
+  // ── Layer 1: FM carrier — the classic sonar "ping" tone ──
+  // A real sonar ping is a sine that starts high, decays slowly with a slight
+  // pitch wobble from the carrier/modulator interaction.
+  const fmMod = audioCtx.createOscillator();
+  fmMod.type = 'sine';
+  fmMod.frequency.value = 4.2;                         // modulator at 4.2 Hz
+  const fmModGain = audioCtx.createGain();
+  fmModGain.gain.setValueAtTime(18, now);               // modulation depth: subtle
+  fmModGain.gain.exponentialRampToValueAtTime(0.5, now + 1.8);
+  fmMod.connect(fmModGain);
+
+  const fmCarrier = audioCtx.createOscillator();
+  fmCarrier.type = 'sine';
+  fmCarrier.frequency.setValueAtTime(1046, now);        // C6 — bright, penetrating
+  fmCarrier.frequency.exponentialRampToValueAtTime(880, now + 0.05);  // tiny attack glide
+  fmCarrier.frequency.exponentialRampToValueAtTime(622, now + 2.4);   // slow pitch decay
+  fmModGain.connect(fmCarrier.frequency);               // FM modulation wired in
+
+  const carrierGain = audioCtx.createGain();
+  carrierGain.gain.setValueAtTime(0, now);
+  carrierGain.gain.linearRampToValueAtTime(0.28, now + 0.003); // very fast attack
+  carrierGain.gain.setValueAtTime(0.28, now + 0.01);
+  carrierGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.6); // long natural decay
+  fmCarrier.connect(carrierGain);
+  carrierGain.connect(reverbShort);
+  carrierGain.connect(reverbLong);  // feed long reverb for the lingering sonar tail
+  fmMod.start(now);    fmMod.stop(now + 2.7);
+  fmCarrier.start(now); fmCarrier.stop(now + 2.7);
+
+  // ── Layer 2: Metallic ring — adds the steel-hull resonance character ──
+  // Two slightly detuned sines beating against each other = metallic shimmer
+  const ring1 = audioCtx.createOscillator();
+  ring1.type = 'sine';
+  ring1.frequency.setValueAtTime(1318, now);            // E6
+  ring1.frequency.exponentialRampToValueAtTime(880, now + 1.4);
+  const ring2 = audioCtx.createOscillator();
+  ring2.type = 'sine';
+  ring2.frequency.setValueAtTime(1330, now);            // E6 + 12 Hz detune → beating
+  ring2.frequency.exponentialRampToValueAtTime(892, now + 1.4);
+
+  const ringGain = audioCtx.createGain();
+  ringGain.gain.setValueAtTime(0, now);
+  ringGain.gain.linearRampToValueAtTime(0.08, now + 0.004);
+  ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+  ring1.connect(ringGain); ring2.connect(ringGain);
+  ringGain.connect(reverbShort);
+  ring1.start(now); ring1.stop(now + 1.6);
+  ring2.start(now); ring2.stop(now + 1.6);
+
+  // ── Layer 3: Sub-harmonic body — warmth beneath the ping ──
+  // One octave down, decays quickly — adds physical "weight"
+  const sub = audioCtx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(523, now);               // C5
+  sub.frequency.exponentialRampToValueAtTime(440, now + 0.4);
+  const subGain = audioCtx.createGain();
+  subGain.gain.setValueAtTime(0, now);
+  subGain.gain.linearRampToValueAtTime(0.14, now + 0.005);
+  subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+  sub.connect(subGain);
+  subGain.connect(reverbShort);
+  sub.start(now); sub.stop(now + 0.5);
+
+  // ── Layer 4: High shimmer — the 'glassy' initial transient ──
+  // Very short burst at 2x frequency with near-instant decay
+  const shimmer = audioCtx.createOscillator();
+  shimmer.type = 'sine';
+  shimmer.frequency.setValueAtTime(2093, now);          // C7 — sharp attack transient
+  shimmer.frequency.exponentialRampToValueAtTime(1046, now + 0.08);
+  const shGain = audioCtx.createGain();
+  shGain.gain.setValueAtTime(0, now);
+  shGain.gain.linearRampToValueAtTime(0.11, now + 0.002);
+  shGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+  shimmer.connect(shGain);
+  shGain.connect(reverbShort);
+  shimmer.start(now); shimmer.stop(now + 0.14);
+}
+
+/* REPLACED — old playContactBlip (simple bandpass sine, no depth)
+function playContactBlip_OLD(signal) {
+  const osc = audioCtx.createOscillator();
+  osc.type = signal.crit ? 'square' : 'sine';
+  osc.frequency.setValueAtTime(freq, now);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + dur);
+  // single bandpass filter, no real character
+  ...
+}
+*/
+
+// NEW playContactBlip — realistic radar return blip
+// Each contact echo sounds like a genuine sonar return: a focused ping reflection
+// with pitch-matched harmonics, slight doppler glide, and species-coloured timbre
+function playContactBlip(signal) {
+  if (!audioCtx || !audioEnabled) return;
+  const now = audioCtx.currentTime;
+
+  // Signal strength → base pitch. Range: 440 Hz (faint) to 1760 Hz (max threat).
+  // Uses musical intervals so multiple contacts form a chord rather than noise.
+  const norm = Math.max(0, Math.min(1, (signal.signal + 90) / 60));
+  // Snap to pentatonic scale degrees for pleasing multi-contact layering
+  const pentatonic = [440, 494, 554, 659, 740, 880, 988, 1109, 1319, 1480, 1760];
+  const idx   = Math.floor(norm * (pentatonic.length - 1));
+  const baseF = pentatonic[idx];
+  const vol   = 0.06 + norm * 0.20;
+  const decay = signal.crit ? 0.55 : signal.warn ? 0.38 : 0.26;
+
+  // ── Return ping: the reflection of the sweep hitting the contact ──
+  // Starts slightly above base pitch (doppler "approach") then settles down
+  const ret = audioCtx.createOscillator();
+  ret.type = 'sine';
+  ret.frequency.setValueAtTime(baseF * 1.04, now);       // +4% doppler on attack
+  ret.frequency.exponentialRampToValueAtTime(baseF, now + 0.018);
+  ret.frequency.exponentialRampToValueAtTime(baseF * 0.72, now + decay);
+  const retGain = audioCtx.createGain();
+  retGain.gain.setValueAtTime(0, now);
+  retGain.gain.linearRampToValueAtTime(vol, now + 0.002); // sharp attack
+  retGain.gain.setValueAtTime(vol, now + 0.012);
+  retGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+  // Resonant bandpass — tightens the tone, removes mud
+  const bpf = audioCtx.createBiquadFilter();
+  bpf.type = 'bandpass';
+  bpf.frequency.value = baseF;
+  bpf.Q.value = 8;                                       // high Q = musical 'ping' character
+
+  ret.connect(bpf); bpf.connect(retGain);
+  retGain.connect(reverbShort);
+  if (signal.crit || signal.warn) retGain.connect(reverbLong);
+  ret.start(now); ret.stop(now + decay + 0.05);
+
+  // ── 2nd harmonic overtone — adds body and makes it sound "full" ──
+  const harm = audioCtx.createOscillator();
+  harm.type = 'sine';
+  harm.frequency.setValueAtTime(baseF * 2.01, now);      // slightly sharp 2nd harmonic
+  harm.frequency.exponentialRampToValueAtTime(baseF * 1.98, now + decay * 0.6);
+  const harmGain = audioCtx.createGain();
+  harmGain.gain.setValueAtTime(0, now);
+  harmGain.gain.linearRampToValueAtTime(vol * 0.28, now + 0.003);
+  harmGain.gain.exponentialRampToValueAtTime(0.0001, now + decay * 0.7);
+  harm.connect(harmGain); harmGain.connect(reverbShort);
+  harm.start(now); harm.stop(now + decay * 0.75);
+
+  // ── CRITICAL: warbling double-strike — unmistakably alarming ──
+  if (signal.crit) {
+    // Second strike delayed 90ms — like a contact that's moving fast
+    [0.09, 0.20].forEach((delay, i) => {
+      const s2 = audioCtx.createOscillator();
+      s2.type = 'sine';
+      s2.frequency.setValueAtTime(baseF * (1.5 - i * 0.12), now + delay);
+      s2.frequency.exponentialRampToValueAtTime(baseF * (0.9 - i * 0.08), now + delay + 0.35);
+      const sg = audioCtx.createGain();
+      sg.gain.setValueAtTime(0, now + delay);
+      sg.gain.linearRampToValueAtTime(vol * (0.55 - i * 0.15), now + delay + 0.003);
+      sg.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.38);
+      s2.connect(sg); sg.connect(reverbShort); sg.connect(reverbLong);
+      s2.start(now + delay); s2.stop(now + delay + 0.42);
+    });
+  }
+
+  // ── Distant echo: the 'bounce-back' from deep space ──
+  // Half-pitch, 60ms delayed, fed only to long reverb — creates the spacious tail
+  const echo = audioCtx.createOscillator();
+  echo.type = 'sine';
+  echo.frequency.setValueAtTime(baseF * 0.502, now + 0.06); // very slightly detuned sub-oct
+  echo.frequency.exponentialRampToValueAtTime(baseF * 0.42, now + 0.7);
+  const eg = audioCtx.createGain();
+  eg.gain.setValueAtTime(0, now + 0.06);
+  eg.gain.linearRampToValueAtTime(vol * 0.14, now + 0.075);
+  eg.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+  echo.connect(eg); eg.connect(reverbLong);
+  echo.start(now + 0.06); echo.stop(now + 0.8);
+
+  pianoNotes.push({ freq: baseF, time: now });
+  if (pianoNotes.length > 60) pianoNotes.shift();
+}
+
+/* REPLACED — old startSweepTick (a single 1200 Hz sine blip, no sweep character)
+function startSweepTick_OLD() {
+  function tick() {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 1200;
+    // just a short blip, no sweep feel
+    ...
+  }
+}
+*/
+
+// NEW startSweepTick — continuous sweep whoosh locked to arm rotation
+// Instead of a periodic timer blip, this now generates a very soft
+// tonal sweep sound that rises and falls as the arm rotates — like
+// the actual electromagnetic emission of a rotating radar dish.
+// It fires a short shaped tone whose frequency climbs slightly each frame
+// to mimic the Doppler-like sensation of something passing overhead.
+let sweepWhooshInterval = null;
+let sweepWhooshPhase = 0;
+
+function startSweepTick() {
+  let lastWhooshAngle = -1;
+  let whooshCount = 0;
+
+  function whoosh() {
+    if (!audioCtx || !audioEnabled) { sweepWhooshInterval = setTimeout(whoosh, 200); return; }
+
+    // Read current arm angle from the global `angle` variable
+    const armAngle = typeof angle !== 'undefined' ? angle : 0;
+    const spd = parseFloat(document.getElementById('scan-speed')?.value || 5);
+
+    // Fire a sweep whoosh every ~45° of rotation (8 per revolution)
+    // The angular step size depends on speed
+    const sector = Math.PI / 4;
+    const sectorIdx = Math.floor(armAngle / sector);
+    if (sectorIdx !== Math.floor(lastWhooshAngle / sector)) {
+      lastWhooshAngle = armAngle;
+      const now = audioCtx.currentTime;
+
+      // ── Soft sweep tone ──
+      // A quick sine with a slight upward frequency arc — sounds like
+      // the leading edge of a rotating beam briefly illuminating a point
+      const sweepF = 320 + (armAngle / (Math.PI * 2)) * 160; // slowly drifts 320→480 per revolution
+      const sOsc = audioCtx.createOscillator();
+      sOsc.type = 'sine';
+      sOsc.frequency.setValueAtTime(sweepF * 0.95, now);
+      sOsc.frequency.linearRampToValueAtTime(sweepF * 1.05, now + 0.04);
+      sOsc.frequency.exponentialRampToValueAtTime(sweepF * 0.88, now + 0.14);
+      const sGain = audioCtx.createGain();
+      sGain.gain.setValueAtTime(0, now);
+      sGain.gain.linearRampToValueAtTime(0.028 + spd * 0.003, now + 0.008);
+      sGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      sOsc.connect(sGain); sGain.connect(reverbShort);
+      sOsc.start(now); sOsc.stop(now + 0.2);
+
+      // ── Sub-harmonic undertone beneath the sweep ──
+      // Adds the physical 'mass' of a rotating antenna
+      const subOsc = audioCtx.createOscillator();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(sweepF * 0.5, now);
+      subOsc.frequency.exponentialRampToValueAtTime(sweepF * 0.44, now + 0.12);
+      const subG = audioCtx.createGain();
+      subG.gain.setValueAtTime(0, now);
+      subG.gain.linearRampToValueAtTime(0.018, now + 0.006);
+      subG.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+      subOsc.connect(subG); subG.connect(reverbShort);
+      subOsc.start(now); subOsc.stop(now + 0.16);
+    }
+
+    const ms = Math.max(16, 80 / (spd / 3)); // poll fast enough to catch 8 sectors/rev
+    sweepWhooshInterval = setTimeout(whoosh, ms);
+  }
+  sweepWhooshInterval = setTimeout(whoosh, 100);
+}
+
+function updateAudioUI() {
+  ['audio-btn','sono-audio-btn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.textContent = audioEnabled ? 'AUDIO ON' : 'AUDIO OFF';
+    b.classList.toggle('active-btn', audioEnabled);
+  });
+  const tb = document.getElementById('tb-audio');
+  if (tb) tb.textContent = audioEnabled ? 'ON' : 'OFF';
+}
+
+function toggleAudio() {
+  if (!audioCtx) { initAudio(); return; }
+  audioEnabled = !audioEnabled;
+  const volEl = document.getElementById('vol-master');
+  const vol = volEl ? parseFloat(volEl.value) / 100 : 0.7;
+  masterGain.gain.setTargetAtTime(audioEnabled ? vol : 0, audioCtx.currentTime, 0.1);
+  if (audioEnabled && audioCtx.state === 'suspended') audioCtx.resume();
+  updateAudioUI();
+}
+
+/* REPLACED — old playSignalTone (single chirp osc, bandpass only)
+function playSignalTone_OLD(signal, composition) {
+  // Detection chirp: quick ascending glide
+  const osc = audioCtx.createOscillator();
+  osc.type = oscTypeEl ? oscTypeEl.value : 'sine';
+  osc.frequency.setValueAtTime(freq * 0.7, now);
+  osc.frequency.exponentialRampToValueAtTime(freq, now + 0.06);
+  ...
+}
+*/
+
+// NEW playSignalTone — rich first-detection sound
+// A two-stage chirp: a sharp initial "lock-on" blip followed by a
+// confirmatory tone that fades musically into the reverb tail.
+// Pitch class comes from the pentatonic grid to harmonise with contact blips.
+function playSignalTone(signal, composition) {
+  if (!audioCtx || !audioEnabled || !reverbShort) return;
+  const now = audioCtx.currentTime;
+  const norm = Math.max(0, Math.min(1, (signal + 90) / 60));
+
+  // Pentatonic grid — same as blips so detection + echo form a chord
+  const pent = [220, 247, 277, 330, 370, 440, 494, 554, 659, 740, 880];
+  const baseF = pent[Math.floor(norm * (pent.length - 1))];
+  const vol = 0.12 + norm * 0.16;
+
+  // ── Stage 1: Ascending lock-on chirp (very fast, 60ms) ──
+  const chirp = audioCtx.createOscillator();
+  chirp.type = 'sine';
+  chirp.frequency.setValueAtTime(baseF * 0.5, now);
+  chirp.frequency.exponentialRampToValueAtTime(baseF * 2.0, now + 0.055); // fast upswing
+  chirp.frequency.exponentialRampToValueAtTime(baseF * 1.8, now + 0.09);  // slight settle
+  const cGain = audioCtx.createGain();
+  cGain.gain.setValueAtTime(0, now);
+  cGain.gain.linearRampToValueAtTime(vol * 0.9, now + 0.004);
+  cGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+  chirp.connect(cGain); cGain.connect(reverbShort);
+  chirp.start(now); chirp.stop(now + 0.1);
+
+  // ── Stage 2: Confirmatory sustain tone (starts 50ms after chirp) ──
+  // The "I've locked this contact" musical note
+  const conf = audioCtx.createOscillator();
+  conf.type = 'sine';
+  conf.frequency.setValueAtTime(baseF, now + 0.05);
+  conf.frequency.exponentialRampToValueAtTime(baseF * 0.88, now + 0.38);
+  const cfGain = audioCtx.createGain();
+  cfGain.gain.setValueAtTime(0, now + 0.05);
+  cfGain.gain.linearRampToValueAtTime(vol * 0.7, now + 0.055);
+  cfGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.40);
+
+  // Species-coloured filter — methane shifts warmth, sulfur adds edge
+  const confFilt = audioCtx.createBiquadFilter();
+  confFilt.type = 'peaking';
+  confFilt.frequency.value = 800 + ((composition.methane || 0) / 100) * 1200;
+  confFilt.gain.value = 4 + ((composition.sulfur || 0) / 100) * 6;
+  confFilt.Q.value = 2;
+  conf.connect(confFilt); confFilt.connect(cfGain);
+  cfGain.connect(reverbShort);
+  if (norm > 0.6) cfGain.connect(reverbLong); // strong signals get extra tail
+  conf.start(now + 0.05); conf.stop(now + 0.45);
+
+  // ── Octave shadow — a very faint tone an octave below for warmth ──
+  const shadow = audioCtx.createOscillator();
+  shadow.type = 'sine';
+  shadow.frequency.setValueAtTime(baseF * 0.5, now + 0.05);
+  shadow.frequency.exponentialRampToValueAtTime(baseF * 0.44, now + 0.35);
+  const shG = audioCtx.createGain();
+  shG.gain.setValueAtTime(0, now + 0.05);
+  shG.gain.linearRampToValueAtTime(vol * 0.18, now + 0.06);
+  shG.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+  shadow.connect(shG); shG.connect(reverbShort);
+  shadow.start(now + 0.05); shadow.stop(now + 0.38);
+
+  pianoNotes.push({ freq: baseF, time: now });
+  if (pianoNotes.length > 60) pianoNotes.shift();
+}
+
+const SPECIES_TONES = {
+  vogon:         { freq: 150, type: 'square',   dur: 0.8,  filter: 400  },
+  zaphod:        { freq: 320, type: 'sawtooth', dur: 0.5,  filter: 1200 },
+  marvin:        { freq: 42,  type: 'sine',     dur: 2.0,  filter: 200  },
+  slartibartfast:{ freq: 700, type: 'triangle', dur: 0.4,  filter: 2000 },
+  trillian:      { freq: 520, type: 'sine',     dur: 0.6,  filter: 3000 },
+  unknown:       { freq: 260, type: 'sawtooth', dur: 0.7,  filter: 800  },
+  quantum:       { freq: 1100,type: 'sine',     dur: 0.3,  filter: 4000 },
+  hyperspace:    { freq: 880, type: 'square',   dur: 0.2,  filter: 6000 },
+  critical:      { freq: 1200,type: 'sawtooth', dur: 1.0,  filter: 8000 },
+};
+
+function playSpeciesTone(name, btnEl) {
+  if (!audioCtx) { if (!initAudio()) return; }
+  if (!audioEnabled) { audioEnabled = true; masterGain.gain.value = 0.7; updateAudioUI(); }
+  if (!reverbShort) return;
+  const t = SPECIES_TONES[name]; if (!t) return;
+  const now = audioCtx.currentTime;
+
+  const osc = audioCtx.createOscillator();
+  osc.type = t.type;
+  osc.frequency.setValueAtTime(t.freq, now);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(20, t.freq * 0.7), now + t.dur);
+
+  // Add slight vibrato for character
+  const vib = audioCtx.createOscillator();
+  vib.frequency.value = 5 + Math.random() * 3;
+  const vibGain = audioCtx.createGain();
+  vibGain.gain.value = t.freq * 0.01;
+  vib.connect(vibGain); vibGain.connect(osc.frequency);
+
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.35, now + 0.01);
+  gain.gain.setValueAtTime(0.35, now + t.dur * 0.7);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + t.dur);
+
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = t.filter;
+
+  osc.connect(filt); filt.connect(gain);
+  gain.connect(reverbShort);
+  gain.connect(reverbLong);
+
+  osc.start(now); osc.stop(now + t.dur + 0.05);
+  vib.start(now); vib.stop(now + t.dur + 0.05);
+
+  if (btnEl) {
+    document.querySelectorAll('.synth-btn').forEach(b => b.classList.remove('playing'));
+    btnEl.classList.add('playing');
+    setTimeout(() => btnEl.classList.remove('playing'), t.dur * 1000 + 200);
+  }
+}
+
+function playAllTones() {
+  const names = Object.keys(SPECIES_TONES);
+  const btns = document.querySelectorAll('.synth-btn');
+  names.forEach((n, i) => setTimeout(() => playSpeciesTone(n, btns[i] || null), i * 700));
+}
+
+function setMasterVol(v) {
+  const el = document.getElementById('sv-vol'); if (el) el.textContent = v;
+  if (masterGain && audioEnabled) masterGain.gain.setTargetAtTime(v / 100, audioCtx.currentTime, 0.05);
+}
+function setReverb(v) {
+  const el = document.getElementById('sv-rev'); if (el) el.textContent = v;
+  // Map 0–100 to ambient noise level
+  if (ambientGain) ambientGain.gain.setTargetAtTime(0.01 + (v/100) * 0.06, audioCtx.currentTime, 0.1);
+}
+function setLFO(v) {
+  const el = document.getElementById('sv-lfo'); if (el) el.textContent = v;
+}
+function setOscType(v) {}
+
+// ===== RADAR DRAW =====
+function drawRadar() {
+  if (!W || !H || R < 10) return;
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.clip();
+
+  // BG
+  ctx.fillStyle = '#010c03';
+  ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.fill();
+
+  // Stars
+  for (let i=0; i<150; i++) {
+    const sx = (Math.sin(i*2.39+1)*0.5+0.5)*W;
+    const sy = (Math.cos(i*1.73+2.3)*0.5+0.5)*H;
+    if (Math.hypot(sx-CX,sy-CY)>R-6) continue;
+    ctx.fillStyle = `rgba(200,255,220,${0.15+(i%6)*0.05})`;
+    ctx.fillRect(sx, sy, 1, 1);
+  }
+
+  // Rings
+  [.25,.5,.75,1].forEach((f,i) => {
+    const rr = Math.max(1, R*f);
+    ctx.strokeStyle = `rgba(0,255,136,${0.06+i*0.06})`;
+    ctx.lineWidth = i===3?1:.5;
+    ctx.beginPath(); ctx.arc(CX,CY,rr,0,Math.PI*2); ctx.stroke();
+    if (f<1) {
+      const range = parseFloat(document.getElementById('range-sel').value);
+      ctx.fillStyle = 'rgba(0,255,136,0.25)'; ctx.font='8px Share Tech Mono';
+      ctx.fillText((range*f/1e6).toFixed(2)+'M pc', CX+rr+4, CY-2);
+    }
+  });
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,255,136,0.07)'; ctx.lineWidth=.5;
+  ctx.setLineDash([2,8]);
+  for (let a=0; a<Math.PI*2; a+=Math.PI/8) {
+    const p = polar(a,R); ctx.beginPath(); ctx.moveTo(CX,CY); ctx.lineTo(p.x,p.y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Sweep trail
+  for (let t=0; t<50; t++) {
+    const a = angle - (t/50)*Math.PI*.65;
+    const alpha = (1-t/50)*.22;
+    ctx.fillStyle = `rgba(0,255,136,${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(CX,CY);
+    ctx.arc(CX,CY,R,a,a+(Math.PI*.65/50));
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Sweep line
+  ctx.strokeStyle = 'rgba(0,255,136,0.95)'; ctx.lineWidth=1.5;
+  ctx.shadowColor='rgba(0,255,136,0.5)'; ctx.shadowBlur=8;
+  const ep = polar(angle, R);
+  ctx.beginPath(); ctx.moveTo(CX,CY); ctx.lineTo(ep.x,ep.y); ctx.stroke();
+  ctx.shadowBlur=0;
+
+  // Signals
+  signals.forEach(s => {
+    const age = frame - s.birth;
+    const fresh = Math.max(0, 1 - age/280);
+    if (fresh<=0) { s.dead=true; return; }
+    const drawR = Math.max(5, R - 8);
+    const p = polar(s.angle, s.dist * drawR);
+    const [r,g,b] = s.rgb;
+    for (let ri=0; ri<3; ri++) {
+      const rr = Math.max(0.5, (s.size+ri*5)*fresh);
+      ctx.strokeStyle=`rgba(${r},${g},${b},${(0.6-ri*.15)*fresh})`;
+      ctx.lineWidth=.7; ctx.beginPath(); ctx.arc(p.x,p.y,rr,0,Math.PI*2); ctx.stroke();
+    }
+    const dotR = Math.max(1, s.size*.35+2);
+    ctx.fillStyle=`rgba(${r},${g},${b},${Math.min(1,fresh*1.5)})`;
+    ctx.shadowColor=`rgba(${r},${g},${b},.8)`; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.arc(p.x,p.y,dotR,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    if (fresh>.4) {
+      ctx.fillStyle=`rgba(${r},${g},${b},${fresh*.8})`;
+      ctx.font='8px Share Tech Mono';
+      ctx.fillText(s.species.substring(0,9), p.x+8, p.y-2);
+      ctx.fillStyle=`rgba(0,255,136,${fresh*.5})`;
+      ctx.fillText(s.signal.toFixed(0)+'dBm', p.x+8, p.y+9);
+    }
+  });
+  signals = signals.filter(s=>!s.dead);
+  ctx.restore();
+
+  // Center dot
+  ctx.fillStyle='#00ff88'; ctx.shadowColor='#00ff88'; ctx.shadowBlur=16;
+  ctx.beginPath(); ctx.arc(CX,CY,5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.arc(CX,CY,2.5,0,Math.PI*2); ctx.fill();
+}
+
+function polar(a, r) { return {x: CX+Math.cos(a)*r, y: CY+Math.sin(a)*r}; }
+
+// ===== WAVEFORM =====
+function drawWaveform() {
+  const wfc = document.getElementById('waveform-canvas');
+  if (!wfc) return;
+  const ww = Math.max(10, wfc.clientWidth || wfc.offsetWidth || 280);
+  const wh = 60;
+  if (wfc.width !== ww) wfc.width = ww;
+  wfc.height = wh;
+  const wctx = wfc.getContext('2d');
+  wctx.clearRect(0,0,ww,wh);
+  wctx.fillStyle = 'rgba(1,12,3,.8)'; wctx.fillRect(0,0,ww,wh);
+
+  if (analyserNode && audioEnabled) {
+    const data = new Uint8Array(analyserNode.frequencyBinCount);
+    if (wfMode==='spectrum') {
+      analyserNode.getByteFrequencyData(data);
+      wctx.strokeStyle='rgba(0,255,136,.8)'; wctx.lineWidth=1;
+      for (let i=0; i<ww; i++) {
+        const idx = Math.floor(i/ww*data.length);
+        const h = (data[idx]/255)*wh;
+        wctx.fillStyle=`rgba(0,255,136,${data[idx]/255*.8})`;
+        wctx.fillRect(i, wh-h, 1, h);
+      }
+    } else {
+      analyserNode.getByteTimeDomainData(data);
+      wctx.strokeStyle='rgba(0,255,136,.9)'; wctx.lineWidth=1.5;
+      wctx.beginPath();
+      for (let i=0; i<ww; i++) {
+        const idx=Math.floor(i/ww*data.length);
+        const y=((data[idx]-128)/128)*(wh/2)+(wh/2);
+        i===0?wctx.moveTo(i,y):wctx.lineTo(i,y);
+      }
+      wctx.stroke();
+    }
+  } else {
+    // Animated placeholder wave
+    wctx.strokeStyle='rgba(0,255,136,.4)'; wctx.lineWidth=1;
+    const t=frame*.04;
+    wctx.beginPath();
+    for (let i=0; i<ww; i++) {
+      const y=wh/2+Math.sin(i*.08+t)*8*Math.sin(i*.02+t*.3)+Math.sin(i*.2+t*1.4)*3;
+      i===0?wctx.moveTo(i,y):wctx.lineTo(i,y);
+    }
+    wctx.stroke();
+    // Neutrino mode overlay
+    if (wfMode==='neutrino') {
+      for (let i=0; i<ww; i+=3) {
+        const h=(Math.sin(i*.15+t)+1)*.5*wh*.8+2;
+        wctx.fillStyle=`rgba(204,68,255,${.3+Math.sin(i*.1+t)*.2})`;
+        wctx.fillRect(i, wh-h, 2, h);
+      }
+    }
+  }
+  // Freq label
+  const f = 42+Math.sin(frame*.02)*20;
+  const wfEl = document.getElementById('wf-freq');
+  if (wfEl) wfEl.textContent = f.toFixed(1)+' Hz';
+}
+
+// ===== SPECTROGRAM (sono page) =====
+let spectrogramData = [];
+function drawSpectrogram() {
+  const sc = document.getElementById('spectrogram-canvas');
+  const oc = document.getElementById('oscilloscope-canvas');
+  if (!sc || !oc) return;
+  const sw = Math.max(10, sc.clientWidth || sc.offsetWidth || 400);
+  const sh = 200;
+  if (sc.width !== sw) { sc.width = sw; spectrogramData = []; }
+  sc.height = sh;
+
+  const sctx = sc.getContext('2d');
+
+  let col;
+  if (analyserNode && audioEnabled) {
+    const d = new Uint8Array(analyserNode.frequencyBinCount);
+    analyserNode.getByteFrequencyData(d);
+    col = Array.from({length:64}, (_,i) => d[Math.floor(i/64*d.length)]);
+  } else {
+    col = Array.from({length:64}, (_,i) => Math.max(0, Math.sin(frame*.03+i*.3)*80+Math.random()*20));
+  }
+  spectrogramData.push(col);
+  if (spectrogramData.length > sw) spectrogramData.shift();
+
+  const imgData = sctx.createImageData(spectrogramData.length, 64);
+  for (let x=0; x<spectrogramData.length; x++) {
+    for (let y=0; y<64; y++) {
+      const val = spectrogramData[x][63-y];
+      const pIdx = (y*spectrogramData.length+x)*4;
+      imgData.data[pIdx]   = val*0.5;
+      imgData.data[pIdx+1] = val;
+      imgData.data[pIdx+2] = val*0.4;
+      imgData.data[pIdx+3] = 220;
+    }
+  }
+  sctx.putImageData(imgData, 0, 0);
+
+  // Oscilloscope
+  const octx = oc.getContext('2d');
+  const ow = Math.max(10, oc.clientWidth || oc.offsetWidth || 400);
+  if (oc.width !== ow) oc.width = ow;
+  oc.height = 120;
+  octx.fillStyle='rgba(1,12,3,.95)'; octx.fillRect(0,0,ow,120);
+  octx.strokeStyle='rgba(0,255,136,.7)'; octx.lineWidth=1.5;
+  octx.beginPath();
+  const t=frame*.05;
+  for (let i=0; i<ow; i++) {
+    const y=60+Math.sin(i*.1+t)*25*Math.sin(i*.03+t*.4)+Math.sin(i*.4+t*2.1)*8;
+    i===0?octx.moveTo(i,y):octx.lineTo(i,y);
+  }
+  octx.stroke();
+
+  // Update freq stats
+  const simFreq = 80+Math.sin(frame*.02)*200;
+  const fnFreq = document.getElementById('fn-freq');
+  const fnAmp = document.getElementById('fn-amp');
+  const fnBw = document.getElementById('fn-bw');
+  const fnSnr = document.getElementById('fn-snr');
+  if (fnFreq) fnFreq.textContent = simFreq.toFixed(1);
+  if (fnAmp) fnAmp.textContent = (-30-Math.random()*20).toFixed(1);
+  if (fnBw) fnBw.textContent = (12+Math.random()*40).toFixed(0);
+  if (fnSnr) fnSnr.textContent = (15+Math.random()*25).toFixed(1);
+}
+
+// ===== PIANO ROLL =====
+function drawPianoRoll() {
+  const pc = document.getElementById('piano-canvas');
+  if (!pc) return;
+  const pw = Math.max(10, pc.clientWidth || pc.offsetWidth || 280);
+  if (pc.width !== pw) pc.width = pw;
+  pc.height = 80;
+  const pctx = pc.getContext('2d');
+  pctx.fillStyle='rgba(1,12,3,.9)'; pctx.fillRect(0,0,pw,80);
+  if (!pianoNotes.length) return;
+  const now = audioCtx ? audioCtx.currentTime : 0;
+  pianoNotes.forEach(n => {
+    const age = now - n.time;
+    if (age > 8) return;
+    const x = pw - (age/8)*pw;
+    const y = Math.max(0, Math.min(77, 80-(n.freq/2400)*80));
+    const alpha = Math.max(0,1-age/8);
+    pctx.fillStyle=`rgba(0,255,136,${alpha*.8})`;
+    pctx.fillRect(x, y, 4, 3);
+  });
+}
+
+// ===== SIGNAL DETECTION =====
+function makeComposition() {
+  const norm = () => Math.random();
+  const m=norm()*80, s=norm()*50, so=norm()*70, b=norm()*55, q=norm()*40;
+  return { methane:m, sulfur:s, sonic:so, bio:b, quantum:q };
+}
+
+function addSignal(fromGwosc, label) {
+  const sens = parseFloat(document.getElementById('sensitivity').value);
+  const a = Math.random()*Math.PI*2;
+  const d = .1+Math.random()*.85;
+  const str = -(20+Math.random()*65)*(1/(sens*.1+.5));
+  const sp = fromGwosc ? (label||'QUANTUM-TOOT') : SPECIES[Math.floor(Math.random()*SPECIES.length)];
+  const cls = fromGwosc ? 'GRAVITATIONAL-FART' : CLASSES[Math.floor(Math.random()*CLASSES.length)];
+  const crit = str > -48;
+  const warn = str > -68 && !crit;
+  const rgb = crit ? [255,51,68] : warn ? [255,180,0] : [0,255,136];
+  const comp = makeComposition();
+  signals.push({angle:a, dist:d, signal:str, species:sp, classification:cls, birth:frame, size:6+Math.random()*8, rgb, crit, warn, comp});
+  addLog(sp, cls, str, crit, warn, comp);
+  if (crit) triggerAlert('crit', sp, cls, str);
+  else if (warn) triggerAlert('warn', sp, cls, str);
+  updateComp(comp, sp);
+  if (audioEnabled) {
+    playSignalTone(str, comp);
+  }
+  updateStats();
+}
+
+function addLog(sp, cls, str, crit, warn, comp) {
+  const ts = new Date().toISOString().slice(11,19);
+  const range = parseFloat(document.getElementById('range-sel').value);
+  const dist = (Math.random()*range).toLocaleString('en',{maximumFractionDigits:0});
+  const el = document.createElement('div');
+  el.className = 'log-entry '+(crit?'crit':warn?'warn':'clear');
+  el.innerHTML = `<span class="t">[${ts}]</span><span class="s">${sp} · ${cls}</span><span class="db">${str.toFixed(1)}dBm</span>`;
+  const log = document.getElementById('signal-log');
+  log.insertBefore(el, log.firstChild);
+  while(log.children.length>80) log.removeChild(log.lastChild);
+  logEntries.unshift({sp,cls,str,crit,warn});
+  document.getElementById('log-count').textContent = Math.min(logEntries.length,80);
+}
+
+function updateComp(c, sp) {
+  const bars = [
+    {id:'methane', v:c.methane},{id:'sulfur', v:c.sulfur},{id:'sonic', v:c.sonic},
+    {id:'bio', v:c.bio},{id:'quantum', v:c.quantum}
+  ];
+  bars.forEach(b => {
+    document.getElementById('bar-'+b.id).style.width = b.v+'%';
+    document.getElementById('bv-'+b.id).textContent = Math.round(b.v)+'%';
+  });
+  document.getElementById('comp-species').textContent = sp;
+}
+
+function updateStats() {
+  const n = signals.length;
+  const cv = n.toString().padStart(2,'0');
+  document.getElementById('rf-contacts').textContent = cv;
+  document.getElementById('tb-contacts').textContent = n;
+  if (!n) return;
+  const strs = signals.map(s=>s.signal);
+  const peak = Math.max(...strs);
+  document.getElementById('rf-peak').textContent = peak.toFixed(1);
+  const crits = signals.filter(s=>s.crit).length;
+  const warns = signals.filter(s=>s.warn&&!s.crit).length;
+  const threEl = document.getElementById('rf-threat');
+  const ssdot = document.getElementById('sys-sdot');
+  const sslbl = document.getElementById('sys-label');
+  if (crits>0) {
+    threEl.textContent='CRITICAL'; threEl.className='val crit';
+    ssdot.className='sdot crit'; sslbl.textContent='CRITICAL';
+  } else if (warns>0) {
+    threEl.textContent='ELEVATED'; threEl.className='val warn';
+    ssdot.className='sdot warn'; sslbl.textContent='ELEVATED';
+  } else {
+    threEl.textContent='NOMINAL'; threEl.className='val';
+    ssdot.className='sdot'; sslbl.textContent='NOMINAL';
+  }
+}
+
+function triggerAlert(type, sp, cls, str) {
+  if (alertTO) clearTimeout(alertTO);
+  const b = document.getElementById('alert-banner');
+  b.className = 'show '+type;
+  document.getElementById('ab-icon').textContent = type==='crit'?'☢':'⚠';
+  document.getElementById('ab-text').textContent = `${type==='crit'?'CRITICAL':'ELEVATED'} — ${sp} ${cls} DETECTED`;
+  document.getElementById('ab-coords').textContent = `${str.toFixed(1)} dBm`;
+  alertTO = setTimeout(() => b.className='', 6000);
+}
+
+function dismissAlert() { document.getElementById('alert-banner').className=''; clearTimeout(alertTO); }
+function manualScan() { addSignal(false); addSignal(false); }
+function clearAll() {
+  signals=[]; logEntries=[];
+  document.getElementById('signal-log').innerHTML='';
+  document.getElementById('log-count').textContent='0';
+  document.getElementById('rf-contacts').textContent='00';
+  document.getElementById('rf-peak').textContent='---';
+  document.getElementById('rf-threat').textContent='NOMINAL';
+  document.getElementById('rf-threat').className='val';
+  document.getElementById('tb-contacts').textContent='0';
+  ['methane','sulfur','sonic','bio','quantum'].forEach(id => {
+    document.getElementById('bar-'+id).style.width='0';
+    document.getElementById('bv-'+id).textContent='0%';
+  });
+}
+
+function onCtrl() {
+  const ss = document.getElementById('scan-speed').value;
+  const sen = document.getElementById('sensitivity').value;
+  document.getElementById('sv-ss').textContent = ss;
+  document.getElementById('sv-sen').textContent = sen;
+  document.getElementById('rf-hz').textContent = (parseFloat(ss)*0.1).toFixed(2);
+}
+
+function onDataSource() {
+  const v = document.getElementById('data-source').value;
+  document.getElementById('tb-data-src').textContent = v.toUpperCase();
+  if (v==='gwosc' && gwoscData.length) injectGwoscSignals();
+  if (v==='nasa' && nasaData.length) injectNasaSignals();
+}
+
+// ===== MOUSE TRACKING =====
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX-rect.left)*(W/rect.width)-CX;
+  const my = (e.clientY-rect.top)*(H/rect.height)-CY;
+  const dist = Math.hypot(mx,my);
+  if (dist>R) return;
+  const a = (Math.atan2(my,mx)*180/Math.PI+360)%360;
+  const range = parseFloat(document.getElementById('range-sel').value);
+  const pcd = (dist/R*range/1e6).toFixed(3);
+  document.getElementById('c-ra').textContent=a.toFixed(1)+'°';
+  document.getElementById('c-dec').textContent=((a+180)%360).toFixed(1)+'°';
+  document.getElementById('c-dist').textContent=pcd+' Mpc';
+  document.getElementById('c-sig').textContent=(-(25+dist/R*55)).toFixed(1)+' dBm';
+  // Nearest signal
+  let near = null; let nearD = 999;
+  signals.forEach(s => {
+    const p = polar(s.angle, s.dist*(R-8));
+    const d = Math.hypot(p.x-CX-mx, p.y-CY-my);
+    if (d<nearD) { nearD=d; near=s; }
+  });
+  document.getElementById('c-sp').textContent = (near && nearD<30) ? near.species : '---';
+});
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX-rect.left)*(W/rect.width)-CX;
+  const my = (e.clientY-rect.top)*(H/rect.height)-CY;
+  if (Math.hypot(mx,my)>R) return;
+  const a = Math.atan2(my,mx);
+  const d = Math.hypot(mx,my)/R;
+  const str = -(25+Math.random()*45);
+  const sp = SPECIES[Math.floor(Math.random()*SPECIES.length)];
+  const cls = CLASSES[Math.floor(Math.random()*CLASSES.length)];
+  const crit=str>-48, warn=str>-68&&!crit;
+  const rgb=crit?[255,51,68]:warn?[255,180,0]:[0,255,136];
+  const comp=makeComposition();
+  signals.push({angle:a,dist:d,signal:str,species:sp,classification:cls,birth:frame,size:8+Math.random()*5,rgb,crit,warn,comp});
+  addLog(sp,cls,str,crit,warn,comp);
+  if(crit) triggerAlert('crit',sp,cls,str);
+  else if(warn) triggerAlert('warn',sp,cls,str);
+  updateComp(comp,sp);
+  if(audioEnabled) {
+    playSignalTone(str,comp);
+  }
+  updateStats();
+});
+
+// ===== MAIN LOOP =====
+function loop() {
+  const spd = parseFloat(document.getElementById('scan-speed').value) || 5;
+  angle += (spd/600)*Math.PI;
+  if (angle>Math.PI*2) angle-=Math.PI*2;
+  frame++;
+
+  if (Math.random() < spd * (parseFloat(document.getElementById('sensitivity').value)||6) * 0.00045) addSignal(false);
+
+  // Drive audio engine every frame
+  if (audioEnabled) audioTick(angle, signals);
+
+  if (currentPage==='main') {
+    drawRadar();
+    drawWaveform();
+  }
+  if (currentPage==='sono') {
+    drawSpectrogram();
+    drawPianoRoll();
+  }
+
+  // Neutrino sim — only update if elements visible
+  if (frame%30===0 && currentPage==='sat') {
+    const flux = (0.5+Math.random()*3.5).toFixed(2);
+    const nf = document.getElementById('neutrino-flux');
+    const sm = document.getElementById('sat-methane');
+    const ss = document.getElementById('sat-sonic-events');
+    const sq = document.getElementById('sat-qe');
+    if (nf) nf.textContent = flux;
+    if (sm) sm.textContent = (0.8+Math.random()*2.4).toFixed(3)+' mol/cm²';
+    if (ss) ss.textContent = Math.floor(50+Math.random()*200)+' events';
+    if (sq) sq.textContent = (0.72+Math.random()*.26).toFixed(3)+' Bell Index';
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// ===== PAGE NAVIGATION =====
+function setPage(name) {
+  currentPage = name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name==='sat') loadRealData();
+}
+
+// ===== CLOCK =====
+function updateClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent =
+    d.toUTCString().slice(17,25)+' UTC';
+  setTimeout(updateClock, 500);
+}
+
+// ===== TERMINAL SCROLL =====
+let termFade=0;
+function updateTerminal() {
+  if (termFade<=0) {
+    document.getElementById('terminal-scroll').textContent = TERMS[termIdx++%TERMS.length];
+    termFade = 3800;
+  }
+  termFade -= 100;
+  setTimeout(updateTerminal, 100);
+}
+
+// ===== REAL DATA =====
+async function loadRealData() {
+  loadGwosc();
+  loadNasa();
+}
+
+async function loadGwosc() {
+  const ind = document.getElementById('gwosc-ind');
+  const stat = document.getElementById('gwosc-status');
+  const lbl = document.getElementById('ldb-gwosc');
+  try {
+    stat.textContent = 'CONNECTING...';
+    const r = await fetch('https://gwosc.org/eventapi/json/allevents/', {mode:'cors'});
+    const data = await r.json();
+    const events = data.events || {};
+    const list = Object.entries(events).sort((a,b)=>(b[1].GPS||0)-(a[1].GPS||0)).slice(0,15);
+    gwoscData = list;
+    ind.className='conn-indicator connected';
+    lbl.textContent = 'GWOSC ● CONNECTED';
+    stat.textContent = list.length+' EVENTS';
+    lbl.style.color='var(--g)';
+    document.getElementById('ldb-gwosc').textContent='GWOSC ●';
+    document.getElementById('ldb-gwosc').style.color='var(--g)';
+    renderGwosc(list);
+  } catch(e) {
+    ind.className='conn-indicator offline';
+    stat.textContent = 'CORS BLOCKED';
+    lbl.style.color='rgba(0,255,136,.3)';
+    document.getElementById('gwosc-body').innerHTML = renderOfflineNote('GWOSC','https://gwosc.org/eventapi/json/allevents/','gravitational wave events','No API key required. CORS policy may block browser-direct requests — use a proxy or Node.js backend for production.');
+  }
+}
+
+async function loadNasa() {
+  const ind = document.getElementById('nasa-ind');
+  const stat = document.getElementById('nasa-status');
+  const lbl = document.getElementById('nasa-conn-lbl');
+  try {
+    stat.textContent = 'CONNECTING...';
+    const today = new Date(); today.setDate(today.getDate()-30);
+    const dt = today.toISOString().slice(0,10);
+    const r = await fetch(`https://api.nasa.gov/DONKI/CME?startDate=${dt}&api_key=DEMO_KEY`);
+    const data = await r.json();
+    nasaData = data || [];
+    ind.className='conn-indicator connected';
+    lbl.textContent = 'NASA DONKI ● CONNECTED';
+    stat.textContent = nasaData.length+' CME EVENTS';
+    document.getElementById('ldb-nasa').textContent='NASA DONKI ●';
+    document.getElementById('ldb-nasa').style.color='var(--g)';
+    renderNasa(nasaData.slice(0,15));
+  } catch(e) {
+    ind.className='conn-indicator offline';
+    stat.textContent = 'FETCH ERROR';
+    document.getElementById('nasa-body').innerHTML = renderOfflineNote('NASA DONKI','https://api.nasa.gov/DONKI/CME?api_key=DEMO_KEY','coronal mass ejection (solar fart) events','Uses DEMO_KEY rate limit (30/hr). Get free key at api.nasa.gov for 1000/hr.');
+  }
+}
+
+function renderOfflineNote(name, url, desc, note) {
+  return `<div style="padding:10px">
+    <div class="data-card">
+      <span class="dc-badge sim">OFFLINE</span>
+      <div class="dc-title">${name}</div>
+      <div class="dc-desc">This feed provides ${desc}.<br><br>URL: <span style="color:var(--b);font-size:8px;word-break:break-all">${url}</span><br><br>${note}</div>
+      <div class="dc-meta">CORS-restricted for browser-direct access in some environments. Data available in Node.js/server context.</div>
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:var(--gd)">Switch to DOCS page for full API integration guide.</div>
+  </div>`;
+}
+
+function renderGwosc(list) {
+  const body = document.getElementById('gwosc-body');
+  body.innerHTML = '';
+  list.forEach(([name, ev]) => {
+    const isBBH = name.includes('GW') && ev.mass_1_source;
+    const card = document.createElement('div');
+    card.className = 'data-card';
+    const dist = ev['luminosity-distance'] || ev.distance || '?';
+    const m1 = ev.mass_1_source ? ev.mass_1_source.toFixed(1) : '?';
+    const snr = ev.network_matched_filter_snr ? ev.network_matched_filter_snr.toFixed(1) : '?';
+    card.innerHTML = `<span class="dc-badge api">LIVE</span>
+      <div class="dc-title">${name}</div>
+      <div class="dc-val">${snr} <span style="font-size:10px">SNR</span></div>
+      <div class="dc-desc">Type: ${ev.commonName||'BINARY MERGER'} // M₁: ${m1} M☉<br>Distance: ${typeof dist==='number'?dist.toFixed(0):dist} Mpc</div>
+      <div class="dc-meta">GPS: ${ev.GPS||'?'} // FART CLASS: QUANTUM-PHASE-${isBBH?'BBH':'BNS'}</div>`;
+    card.onclick = () => injectGwoscEvent(ev, name);
+    body.appendChild(card);
+  });
+}
+
+function renderNasa(list) {
+  const body = document.getElementById('nasa-body');
+  body.innerHTML = '';
+  const timeline = document.createElement('div');
+  list.forEach(ev => {
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    const spd = ev.cmeAnalyses?.[0]?.speed;
+    const tl = spd>1000?'r':spd>600?'a':'g';
+    item.innerHTML = `<span class="tl-time">${(ev.startTime||'').slice(0,16)}</span>
+      <div class="tl-dot ${tl}"></div>
+      <div class="tl-content">
+        <div class="tl-title">SOLAR FART EVENT // CME</div>
+        <div class="tl-sub">Speed: ${spd||'?'} km/s // ${ev.sourceLocation||'?'}</div>
+      </div>`;
+    item.onclick = () => addSignal(true, 'CME-SOLAR-FART');
+    timeline.appendChild(item);
+  });
+  if (!list.length) timeline.innerHTML = '<div style="color:var(--gd);font-size:9px;padding:8px">No recent events in window</div>';
+  body.appendChild(timeline);
+}
+
+function injectGwoscEvent(ev, name) {
+  const dist = ev['luminosity-distance'] || 100;
+  const d = Math.min(.9, (dist||100)/2000);
+  const str = -40 - d*30;
+  const sp = 'QUANTUM-TOOT-'+name.slice(2,8);
+  const cls = 'GRAVITATIONAL-FART';
+  const crit=str>-48, warn=str>-68&&!crit;
+  const rgb=crit?[255,51,68]:warn?[255,180,0]:[0,200,255];
+  const comp=makeComposition();
+  signals.push({angle:Math.random()*Math.PI*2, dist:d, signal:str, species:sp, classification:cls, birth:frame, size:10, rgb, crit, warn, comp});
+  addLog(sp,cls,str,crit,warn,comp);
+  updateComp(comp,sp); updateStats();
+  if(audioEnabled) playSignalTone(str,comp);
+  setPage('main');
+}
+
+function injectGwoscSignals() { gwoscData.slice(0,5).forEach(([name,ev]) => injectGwoscEvent(ev, name)); }
+function injectNasaSignals() { nasaData.slice(0,3).forEach(() => addSignal(true, 'CME-SOLAR-FART')); }
+
+// ===== BOOT =====
+window.addEventListener('resize', () => { resize(); });
+
+// Resume AudioContext on any user gesture (browser policy)
+document.addEventListener('click', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, { passive: true });
+document.addEventListener('keydown', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, { passive: true });
+
+resize();
+updateClock();
+updateTerminal();
+loop();
+// Initial pings
+setTimeout(() => { addSignal(false); addSignal(false); addSignal(false); }, 1000);
+setTimeout(() => { addSignal(false); addSignal(false); }, 2500);
+setTimeout(() => { addSignal(false); }, 4200);
+</script>
+</body>
+</html>
